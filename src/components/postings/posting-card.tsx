@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StepBar } from "@/components/postings/step-bar";
+import { cn } from "@/lib/utils";
 import { currentStepIndex, formatDeadline, isSubmitStep, type Posting } from "@/lib/postings";
 
 function DeadlineBadge({ posting, daysLeft }: { posting: Posting; daysLeft: number | null }) {
@@ -22,17 +23,19 @@ function DeadlineBadge({ posting, daysLeft }: { posting: Posting; daysLeft: numb
 export function PostingCard({
   posting,
   daysLeft,
+  highlight = false,
   onComplete,
 }: {
   posting: Posting;
   daysLeft: number | null;
+  highlight?: boolean;
   onComplete: (posting: Posting, stepIndex: number) => void;
 }) {
   const current = currentStepIndex(posting.steps);
   const step = current === -1 ? null : posting.steps[current];
 
   return (
-    <Card className="gap-4 px-4 shadow-none ring-0 border border-border">
+    <Card className={cn("gap-4 border border-border px-4 shadow-none ring-0 transition-shadow", highlight && "ring-2 ring-primary")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-base font-semibold">{posting.company}</p>

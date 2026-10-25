@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { PostingCard } from "@/components/postings/posting-card";
-import { currentStepIndex, type Posting } from "@/lib/postings";
+import { currentStepIndex, daysUntil, type Posting } from "@/lib/postings";
+import { loadPracticePostings, takeJustSaved } from "@/lib/practice-store";
 
 type Section = { title: string; postings: Posting[] };
 
@@ -45,7 +46,31 @@ export function PostingList({
   daysLeft: Record<string, number | null>;
 }) {
   const [postings, setPostings] = useState(initialPostings);
+  const [extraDaysLeft, setExtraDaysLeft] = useState<Record<string, number | null>>({});
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
+
+  // 연습용으로 저장한 공고(이 탭에만 있음)를 붙이고, 방금 저장한 공고를 알린다
+  useEffect(() => {
+    const practice = loadPracticePostings();
+    const justSaved = takeJustSaved();
+    if (practice.length === 0) return;
+    const now = new Date();
+    /* eslint-disable react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다 */
+    setPostings((prev) => [...prev, ...practice.filter((p) => !prev.some((q) => q.id === p.id))]);
+    setExtraDaysLeft(
+      Object.fromEntries(
+        practice.map((p) => [p.id, p.deadlineKind === "date" && p.deadlineAt ? daysUntil(p.deadlineAt, now) : null]),
+      ),
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+    if (justSaved) {
+      setHighlightId(justSaved);
+      toast("저장했어요 · 연습용이라 이 탭을 닫으면 사라져요");
+      const timer = setTimeout(() => setHighlightId(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   function setStepCompleted(postingId: string, stepIndex: number, completedAt: string | null) {
     setPostings((prev) =>
@@ -65,7 +90,8 @@ export function PostingList({
     });
   }
 
-  const { sections, past } = groupPostings(postings, daysLeft);
+  const allDaysLeft = { ...daysLeft, ...extraDaysLeft };
+  const { sections, past } = groupPostings(postings, allDaysLeft);
 
   return (
     <div className="flex flex-col gap-8">
@@ -78,7 +104,8 @@ export function PostingList({
             <PostingCard
               key={posting.id}
               posting={posting}
-              daysLeft={daysLeft[posting.id]}
+              daysLeft={allDaysLeft[posting.id]}
+              highlight={posting.id === highlightId}
               onComplete={handleComplete}
             />
           ))}
@@ -101,7 +128,8 @@ export function PostingList({
               <PostingCard
                 key={posting.id}
                 posting={posting}
-                daysLeft={daysLeft[posting.id]}
+                daysLeft={allDaysLeft[posting.id]}
+              highlight={posting.id === highlightId}
                 onComplete={handleComplete}
               />
             ))}

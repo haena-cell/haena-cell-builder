@@ -1,16 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { ExtractedPosting, ExtractInput, ExtractResult } from "@/lib/extract-posting";
+import type { ExtractInput, ExtractResult } from "@/lib/extract-posting";
+import { saveDraft, type DraftSource } from "@/lib/practice-store";
 
 type Mode = "link" | "text" | "image";
 
@@ -26,22 +25,6 @@ async function resizeImage(file: File, maxSide = 1600) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
-const FIELD_LABELS: { key: string; label: string; value: (p: ExtractedPosting) => string | null }[] = [
-  { key: "company", label: "기업명", value: (p) => p.company },
-  { key: "jobTitle", label: "직무", value: (p) => p.jobTitle },
-  {
-    key: "deadline",
-    label: "마감일",
-    value: (p) =>
-      p.deadlineKind === "rolling" ? "상시" : p.deadlineKind === "until_filled" ? "채용 시 마감" : p.deadlineAt,
-  },
-  { key: "location", label: "근무지", value: (p) => p.location },
-  { key: "employmentType", label: "근무 형태", value: (p) => p.employmentType },
-  { key: "companySize", label: "기업 규모", value: (p) => p.companySize },
-  { key: "requiredDocs", label: "제출 서류", value: (p) => p.requiredDocs.join(", ") || null },
-  { key: "steps", label: "전형 절차", value: (p) => p.steps.join(" → ") || null },
-];
-
 export function NewPostingForm() {
   const [mode, setMode] = useState<Mode>("link");
   const [url, setUrl] = useState("");
@@ -50,8 +33,8 @@ export function NewPostingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
-  const [result, setResult] = useState<Extract<ExtractResult, { status: "ok" }> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -91,66 +74,31 @@ export function NewPostingForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      const data = await res.json();
+      const data = (await res.json()) as ExtractResult & { error?: string };
       if (!res.ok) {
         setError(data.error ?? "정리하지 못했어요. 다시 시도해 주세요.");
       } else if (data.status === "need_fallback") {
         setFallbackMessage(data.message);
         setMode("text");
-      } else {
-        setResult(data);
+      } else if (data.status === "ok") {
+        const source: DraftSource =
+          input.kind === "link"
+            ? { kind: "link", url: input.url }
+            : input.kind === "image"
+              ? { kind: "image", previewDataUrl: input.dataUrl }
+              : { kind: "text" };
+        if (!saveDraft({ posting: data.posting, isExample: data.isExample, source })) {
+          setError("정리 결과를 옮기지 못했어요. 다시 시도해 주세요.");
+          return;
+        }
+        router.push("/app/new/review");
+        return;
       }
     } catch {
       setError("인터넷 연결을 확인하고 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
-  }
-
-  function reset() {
-    setResult(null);
-    setFallbackMessage(null);
-    setMode("link");
-    setUrl("");
-    setText("");
-    setImage(null);
-  }
-
-  if (result) {
-    const p = result.posting;
-    return (
-      <Card className="gap-4 border border-border px-4 shadow-none ring-0">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-base font-semibold">정리했어요</p>
-          {result.isExample && <Badge className="bg-warning text-warning-foreground">연습용 예시</Badge>}
-        </div>
-        <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-2.5 text-sm">
-          {FIELD_LABELS.map((f) => {
-            const value = f.value(p);
-            const unsure = p.unsure.includes(f.key);
-            return (
-              <div key={f.key} className="contents">
-                <dt className="text-muted-foreground">{f.label}</dt>
-                <dd className={cn(unsure && "rounded-md bg-warning px-2 py-0.5 text-warning-foreground")}>
-                  {value ?? (unsure ? "확인해 주세요" : "—")}
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
-        <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-          틀린 칸을 고쳐 저장하는 확인 화면은 다음 태스크에서 만들어요.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="lg" className="px-3" onClick={reset}>
-            다른 공고 넣기
-          </Button>
-          <Button size="lg" variant="outline" className="px-3" asChild>
-            <Link href="/app">목록으로</Link>
-          </Button>
-        </div>
-      </Card>
-    );
   }
 
   return (
