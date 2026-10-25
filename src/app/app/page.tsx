@@ -5,7 +5,7 @@ import { CalendarDays, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddPostingButton } from "@/components/postings/add-posting-button";
 import { PostingList } from "@/components/postings/posting-list";
-import { daysUntil } from "@/lib/postings";
+import { daysLeftFor } from "@/lib/postings";
 import { makeSamplePostings } from "@/lib/sample-postings";
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ async function Postings() {
   const now = new Date();
   const postings = makeSamplePostings(now);
   const daysLeft = Object.fromEntries(
-    postings.map((p) => [p.id, p.deadlineKind === "date" && p.deadlineAt ? daysUntil(p.deadlineAt, now) : null]),
+    postings.map((p) => [p.id, daysLeftFor(p, now)]),
   );
   return <PostingList initialPostings={postings} daysLeft={daysLeft} />;
 }
@@ -62,7 +62,7 @@ export default function AppHomePage() {
         </div>
 
         <p className="rounded-lg bg-warning px-3 py-2 text-xs text-warning-foreground">
-          연습용 예시 공고예요. [제출 완료]는 이 화면에서만 바뀌고 저장되지 않아요.
+          연습용 예시 공고예요. [제출 완료]·체크·저장은 이 브라우저 탭에만 임시로 남고, 탭을 닫으면 처음으로 돌아가요.
         </p>
 
         <Suspense fallback={<PostingsSkeleton />}>

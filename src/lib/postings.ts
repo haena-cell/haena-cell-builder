@@ -7,6 +7,11 @@ export type PostingStep = {
   completedAt: string | null;
 };
 
+export type PrepItem = {
+  label: string;
+  done: boolean;
+};
+
 export type Posting = {
   id: string;
   company: string;
@@ -14,9 +19,21 @@ export type Posting = {
   deadlineKind: DeadlineKind;
   deadlineAt: string | null;
   deadlineTimeKnown: boolean;
+  location: string | null;
+  employmentType: string | null;
+  companySize: string | null;
+  requiredDocs: string[];
+  sourceUrl: string | null;
   steps: PostingStep[];
+  prepItems: PrepItem[];
   isSample: boolean;
 };
+
+// 준비 항목 기본 목록 + 공고의 제출 서류 중 다른 항목 (DB.md 4번)
+export function defaultPrepItems(requiredDocs: string[]): PrepItem[] {
+  const labels = [...new Set(["이력서", "포트폴리오", "과제", ...requiredDocs])];
+  return labels.map((label) => ({ label, done: false }));
+}
 
 const KST = "Asia/Seoul";
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -52,6 +69,10 @@ export function formatDeadline(posting: Pick<Posting, "deadlineKind" | "deadline
     hourCycle: "h23",
   }).format(date);
   return `${day} ${time} 마감`;
+}
+
+export function daysLeftFor(posting: Posting, now: Date) {
+  return posting.deadlineKind === "date" && posting.deadlineAt ? daysUntil(posting.deadlineAt, now) : null;
 }
 
 // 아직 끝나지 않은 첫 단계. 모두 끝났으면 -1.

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { StepBar } from "@/components/postings/step-bar";
 import { cn } from "@/lib/utils";
 import { currentStepIndex, formatDeadline, isSubmitStep, type Posting } from "@/lib/postings";
 
-function DeadlineBadge({ posting, daysLeft }: { posting: Posting; daysLeft: number | null }) {
+export function DeadlineBadge({ posting, daysLeft }: { posting: Posting; daysLeft: number | null }) {
   if (posting.steps[0]?.completedAt) return <Badge variant="secondary">지원함</Badge>;
   if (posting.deadlineKind !== "date" || daysLeft === null) {
     return <Badge variant="outline">{posting.deadlineKind === "rolling" ? "상시" : "채용 시 마감"}</Badge>;
@@ -35,10 +36,16 @@ export function PostingCard({
   const step = current === -1 ? null : posting.steps[current];
 
   return (
-    <Card className={cn("gap-4 border border-border px-4 shadow-none ring-0 transition-shadow", highlight && "ring-2 ring-primary")}>
+    <Card className={cn("relative gap-4 border border-border px-4 shadow-none ring-0 transition-shadow hover:border-foreground/30", highlight && "ring-2 ring-primary")}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-base font-semibold">{posting.company}</p>
+          {/* 카드 전체를 누르면 상세로 (버튼은 위에 따로 눌림) */}
+          <Link
+            href={`/app/postings/${posting.id}`}
+            className="block truncate text-base font-semibold after:absolute after:inset-0 after:rounded-xl"
+          >
+            {posting.company}
+          </Link>
           <p className="truncate text-sm text-muted-foreground">{posting.jobTitle}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -59,7 +66,7 @@ export function PostingCard({
           <p className="truncate tabular-nums">{formatDeadline(posting)}</p>
         </div>
         {step && (
-          <Button variant="outline" size="lg" className="px-3" onClick={() => onComplete(posting, current)}>
+          <Button variant="outline" size="lg" className="relative z-10 px-3" onClick={() => onComplete(posting, current)}>
             <Check data-icon="inline-start" />
             {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
           </Button>

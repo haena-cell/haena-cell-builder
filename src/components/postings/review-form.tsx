@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import type { DeadlineKind, Posting } from "@/lib/postings";
+import { defaultPrepItems, type DeadlineKind, type Posting } from "@/lib/postings";
 import { addPracticePosting, clearDraft, loadDraft, type Draft } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
@@ -128,7 +128,13 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
       // 시각이 없으면 그날 23:59 (한국 시간)로 저장하고 화면에는 날짜만 보여 준다
       deadlineAt: deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null,
       deadlineTimeKnown: deadlineKind === "date" && time !== "",
+      location: location.trim() || null,
+      employmentType: employmentType.trim() || null,
+      companySize: companySize.trim() || null,
+      requiredDocs: docs,
+      sourceUrl: draft.source.kind === "link" ? draft.source.url : null,
       steps: steps.map((name) => ({ name, completedAt: null })),
+      prepItems: defaultPrepItems(docs),
       isSample: true,
     };
     if (!addPracticePosting(posting)) return setError("저장하지 못했어요. 다시 시도해 주세요.");
