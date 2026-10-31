@@ -39,7 +39,7 @@ const KST = "Asia/Seoul";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // 한국 시간 기준 날짜 문자열 (YYYY-MM-DD)
-function kstDateKey(date: Date) {
+export function kstDateKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: KST }).format(date);
 }
 

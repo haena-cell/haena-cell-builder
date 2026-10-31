@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { CalendarDays, List } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AppHeader } from "@/components/postings/app-header";
 import { AddPostingButton } from "@/components/postings/add-posting-button";
 import { PostingList } from "@/components/postings/posting-list";
 import { daysLeftFor } from "@/lib/postings";
@@ -36,21 +35,7 @@ function PostingsSkeleton() {
 export default function AppHomePage() {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-[720px] items-center justify-between px-4 md:px-6">
-          <span className="text-base font-bold tracking-tight">이름 미정</span>
-          <nav className="flex items-center gap-1" aria-label="보기 전환">
-            <Button variant="ghost" size="lg" className="bg-muted" aria-current="page">
-              <List data-icon="inline-start" />
-              목록
-            </Button>
-            <Button variant="ghost" size="lg" disabled title="5단계에서 만들어요">
-              <CalendarDays data-icon="inline-start" />
-              달력
-            </Button>
-          </nav>
-        </div>
-      </header>
+      <AppHeader active="list" />
 
       <main className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-4 pt-6 pb-24 md:px-6 md:pt-10">
         <div className="flex items-end justify-between gap-4">
