@@ -167,3 +167,25 @@ export async function findSimilarPostings(
     .filter((p) => kstDay(p.deadline_at) === day)
     .map((p) => ({ id: p.id, company: p.company, jobTitle: p.job_title }));
 }
+
+// 현재 단계를 직접 고른다 (되돌리기·건너뛰기). current 앞 단계는 끝낸 것으로, current 부터는 안 끝낸 것으로.
+// current 가 단계 수와 같으면 "전형 끝".
+export async function setCurrentStep(postingId: string, current: number): Promise<ActionResult> {
+  if (!Number.isInteger(current) || current < 0) return { ok: false, message: FAILED };
+  const supabase = await createSupabaseServer();
+  const [undone, done] = await Promise.all([
+    supabase
+      .from("posting_steps")
+      .update({ completed_at: null })
+      .eq("posting_id", postingId)
+      .gt("position", current)
+      .not("completed_at", "is", null),
+    supabase
+      .from("posting_steps")
+      .update({ completed_at: new Date().toISOString() })
+      .eq("posting_id", postingId)
+      .lte("position", current)
+      .is("completed_at", null),
+  ]);
+  return undone.error || done.error ? { ok: false, message: FAILED } : { ok: true };
+}

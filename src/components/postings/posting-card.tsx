@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,11 +26,13 @@ export function PostingCard({
   daysLeft,
   highlight = false,
   onComplete,
+  onBack,
 }: {
   posting: Posting;
   daysLeft: number | null;
   highlight?: boolean;
   onComplete: (posting: Posting, stepIndex: number) => void;
+  onBack: (posting: Posting) => void;
 }) {
   const current = currentStepIndex(posting.steps);
   const step = current === -1 ? null : posting.steps[current];
@@ -65,10 +67,16 @@ export function PostingCard({
           </p>
           <p className="truncate tabular-nums">{formatDeadline(posting)}</p>
         </div>
-        {step && (
+        {step ? (
           <Button variant="outline" size="lg" className="relative z-10 px-3" onClick={() => onComplete(posting, current)}>
             <Check data-icon="inline-start" />
             {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
+          </Button>
+        ) : (
+          // 전형이 끝난 공고: 마지막 단계로 되돌리기
+          <Button variant="ghost" size="lg" className="relative z-10 px-3" onClick={() => onBack(posting)}>
+            <Undo2 data-icon="inline-start" />
+            이전 단계로
           </Button>
         )}
       </div>

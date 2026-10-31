@@ -85,3 +85,8 @@ export function currentStepIndex(steps: PostingStep[]) {
 export function isSubmitStep(name: string) {
   return /제출|과제|서류$/.test(name) && !name.includes("결과");
 }
+
+// 현재 단계를 current 로 바꾼 단계 목록 (앞은 끝낸 것, 뒤는 안 끝낸 것). setCurrentStep 과 같은 규칙.
+export function withCurrentStep(steps: PostingStep[], current: number, now = new Date().toISOString()) {
+  return steps.map((s, i) => ({ ...s, completedAt: i < current ? (s.completedAt ?? now) : null }));
+}

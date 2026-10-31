@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Check, Download, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { CalendarPlus, Check, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,16 @@ import {
   formatDeadline,
   isSubmitStep,
   type DeadlineKind,
+  withCurrentStep,
   type Posting,
 } from "@/lib/postings";
-import { deletePosting, setPrepDone, setStepCompleted as setStepCompletedAction, updatePosting } from "@/lib/posting-actions";
+import {
+  deletePosting,
+  setCurrentStep,
+  setPrepDone,
+  setStepCompleted as setStepCompletedAction,
+  updatePosting,
+} from "@/lib/posting-actions";
 import { cn } from "@/lib/utils";
 
 const DEADLINE_KINDS: { value: DeadlineKind; label: string }[] = [
@@ -142,6 +149,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [choosingStep, setChoosingStep] = useState(false);
   const now = new Date(nowIso);
 
   // 화면을 먼저 바꾸고 DB 에 저장한다. 실패하면 되돌린다.
@@ -172,6 +180,16 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
     toast(`${posting.steps[stepIndex].name} 완료`, {
       action: { label: "되돌리기", onClick: () => saveStep(stepIndex, false) },
     });
+  }
+
+  // 현재 단계 바꾸기: [이전 단계로] 또는 단계를 직접 골라서
+  async function moveToStep(target: number) {
+    const ok = await optimistic(
+      (p) => ({ ...p, steps: withCurrentStep(p.steps, target) }),
+      () => setCurrentStep(posting.id, target),
+    );
+    if (ok) toast(`지금 단계: ${posting.steps[target]?.name ?? "전형 끝"}`);
+    setChoosingStep(false);
   }
 
   function togglePrep(index: number) {
@@ -205,6 +223,8 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
   }
 
   const current = currentStepIndex(posting.steps);
+  // 앞에서부터 끝낸 단계 수 = 지금 단계 번호 (모두 끝났으면 단계 수)
+  const doneSteps = current === -1 ? posting.steps.length : current;
   const step = current === -1 ? null : posting.steps[current];
   const doneCount = posting.prepItems.filter((item) => item.done).length;
   const googleUrl = googleCalendarUrl(posting);
@@ -239,17 +259,56 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
           {/* 전형 단계 */}
           <Section title="전형 단계">
             <StepBar steps={posting.steps} current={current} />
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm">
                 지금: <span className="font-semibold">{step ? step.name : "전형 끝"}</span>
               </p>
-              {step && (
-                <Button variant="outline" size="lg" className="px-3" onClick={() => completeStep(current)}>
-                  <Check data-icon="inline-start" />
-                  {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {doneSteps > 0 && (
+                  <Button variant="ghost" size="lg" className="px-3" onClick={() => moveToStep(doneSteps - 1)}>
+                    <Undo2 data-icon="inline-start" />
+                    이전 단계로
+                  </Button>
+                )}
+                {step && (
+                  <Button variant="outline" size="lg" className="px-3" onClick={() => completeStep(current)}>
+                    <Check data-icon="inline-start" />
+                    {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
+                  </Button>
+                )}
+              </div>
             </div>
+            {choosingStep ? (
+              <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">지금 어느 단계인가요? 앞 단계는 끝낸 것으로 표시돼요.</p>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="지금 단계">
+                  {[...posting.steps.map((s) => s.name), "전형 끝"].map((name, i) => (
+                    <Button
+                      key={`${name}-${i}`}
+                      variant="outline"
+                      size="sm"
+                      role="radio"
+                      aria-checked={doneSteps === i}
+                      className={cn(doneSteps === i && "border-primary bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground")}
+                      onClick={() => (doneSteps === i ? setChoosingStep(false) : moveToStep(i))}
+                    >
+                      {name}
+                    </Button>
+                  ))}
+                </div>
+                <Button variant="ghost" size="sm" className="self-start" onClick={() => setChoosingStep(false)}>
+                  닫기
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                onClick={() => setChoosingStep(true)}
+              >
+                단계 직접 고르기
+              </button>
+            )}
           </Section>
           <Separator />
 

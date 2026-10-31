@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { PostingCard } from "@/components/postings/posting-card";
-import { currentStepIndex, daysLeftFor, type Posting } from "@/lib/postings";
-import { setStepCompleted as setStepCompletedAction } from "@/lib/posting-actions";
+import { currentStepIndex, daysLeftFor, withCurrentStep, type Posting } from "@/lib/postings";
+import { setCurrentStep, setStepCompleted as setStepCompletedAction } from "@/lib/posting-actions";
 
 type Section = { title: string; postings: Posting[] };
 
@@ -96,6 +96,21 @@ export function PostingList({
     });
   }
 
+  // 전형 끝 → 마지막 단계로 되돌리기
+  async function handleBack(posting: Posting) {
+    const target = posting.steps.length - 1;
+    const before = posting.steps;
+    const replaceSteps = (steps: Posting["steps"]) =>
+      setPostings((prev) => prev.map((p) => (p.id === posting.id ? { ...p, steps } : p)));
+    replaceSteps(withCurrentStep(before, target));
+    const result = await setCurrentStep(posting.id, target);
+    if (!result.ok) {
+      replaceSteps(before);
+      return toast.error(result.message);
+    }
+    toast(`${posting.company} · 지금 단계: ${posting.steps[target].name}`);
+  }
+
   const allDaysLeft = now
     ? Object.fromEntries(postings.map((p) => [p.id, daysLeftFor(p, now)]))
     : daysLeft;
@@ -115,6 +130,7 @@ export function PostingList({
               daysLeft={allDaysLeft[posting.id] ?? null}
               highlight={posting.id === highlightId}
               onComplete={handleComplete}
+              onBack={handleBack}
             />
           ))}
         </section>
@@ -139,6 +155,7 @@ export function PostingList({
                 daysLeft={allDaysLeft[posting.id] ?? null}
                 highlight={posting.id === highlightId}
                 onComplete={handleComplete}
+              onBack={handleBack}
               />
             ))}
         </section>
