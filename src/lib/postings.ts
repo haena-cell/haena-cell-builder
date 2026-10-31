@@ -8,10 +8,19 @@ export type PostingStep = {
   completedAt: string | null;
 };
 
+export type Subtask = {
+  id: string;
+  label: string;
+  done: boolean;
+  dueDate: string | null; // 한국 날짜 YYYY-MM-DD
+};
+
 export type PrepItem = {
   id: string;
   label: string;
   done: boolean;
+  dueDate: string | null; // 한국 날짜 YYYY-MM-DD
+  subtasks: Subtask[];
 };
 
 export type Posting = {
@@ -89,4 +98,19 @@ export function isSubmitStep(name: string) {
 // 현재 단계를 current 로 바꾼 단계 목록 (앞은 끝낸 것, 뒤는 안 끝낸 것). setCurrentStep 과 같은 규칙.
 export function withCurrentStep(steps: PostingStep[], current: number, now = new Date().toISOString()) {
   return steps.map((s, i) => ({ ...s, completedAt: i < current ? (s.completedAt ?? now) : null }));
+}
+
+// 할 일 마감 날짜(YYYY-MM-DD)까지 남은 날 수 (today 도 한국 날짜)
+export function daysToDate(dueDate: string, today: string) {
+  return Math.round((Date.parse(dueDate) - Date.parse(today)) / DAY_MS);
+}
+
+// "11월 5일 (목) · D-3"
+export function formatDueDate(dueDate: string, today: string) {
+  const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", month: "long", day: "numeric", weekday: "short" }).format(
+    new Date(`${dueDate}T00:00:00Z`),
+  );
+  const days = daysToDate(dueDate, today);
+  const left = days === 0 ? "오늘" : days > 0 ? `D-${days}` : `${-days}일 지남`;
+  return `${day} · ${left}`;
 }

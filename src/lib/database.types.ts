@@ -147,6 +147,7 @@ export type Database = {
         Row: {
           created_at: string
           done: boolean
+          due_date: string | null
           id: string
           label: string
           position: number
@@ -156,6 +157,7 @@ export type Database = {
         Insert: {
           created_at?: string
           done?: boolean
+          due_date?: string | null
           id?: string
           label: string
           position: number
@@ -165,6 +167,7 @@ export type Database = {
         Update: {
           created_at?: string
           done?: boolean
+          due_date?: string | null
           id?: string
           label?: string
           position?: number
@@ -177,6 +180,47 @@ export type Database = {
             columns: ["posting_id", "user_id"]
             isOneToOne: false
             referencedRelation: "postings"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      prep_subtasks: {
+        Row: {
+          created_at: string
+          done: boolean
+          due_date: string | null
+          id: string
+          label: string
+          position: number
+          prep_item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          label: string
+          position: number
+          prep_item_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          due_date?: string | null
+          id?: string
+          label?: string
+          position?: number
+          prep_item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prep_subtasks_prep_item_fkey"
+            columns: ["prep_item_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "prep_items"
             referencedColumns: ["id", "user_id"]
           },
         ]

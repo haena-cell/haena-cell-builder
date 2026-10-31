@@ -1,15 +1,16 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { CalendarDays, List } from "lucide-react";
+import { CalendarDays, List, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/user-menu";
 import { cn } from "@/lib/utils";
 
-// 목록·달력 화면 위쪽 바: 서비스 이름 + [목록]/[달력] 탭 + 프로필 사진(로그아웃)
-export function AppHeader({ active }: { active: "list" | "calendar" }) {
+// 목록·달력·할 일 화면 위쪽 바: 서비스 이름 + [목록]/[달력]/[할 일] 탭 + 프로필 사진(로그아웃)
+export function AppHeader({ active }: { active: "list" | "calendar" | "todos" }) {
   const tabs = [
     { key: "list", href: "/app", label: "목록", icon: List },
     { key: "calendar", href: "/app/calendar", label: "달력", icon: CalendarDays },
+    { key: "todos", href: "/app/todos", label: "할 일", icon: ListChecks },
   ] as const;
 
   return (
@@ -18,7 +19,7 @@ export function AppHeader({ active }: { active: "list" | "calendar" }) {
         <span className="text-base font-bold tracking-tight">이름 미정</span>
         <nav className="flex items-center gap-1" aria-label="보기 전환">
           {tabs.map(({ key, href, label, icon: Icon }) => (
-            <Button key={key} variant="ghost" size="lg" className={cn(active === key && "bg-muted")} asChild>
+            <Button key={key} variant="ghost" size="lg" className={cn("px-2 md:px-2.5", active === key && "bg-muted")} asChild>
               <Link href={href} aria-current={active === key ? "page" : undefined}>
                 <Icon data-icon="inline-start" />
                 {label}

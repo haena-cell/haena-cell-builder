@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { DeadlineBadge } from "@/components/postings/posting-card";
+import { PrepTodos } from "@/components/postings/prep-todos";
 import { StepBar } from "@/components/postings/step-bar";
 import { canAddToCalendar, googleCalendarUrl, icsFile } from "@/lib/calendar";
 import {
@@ -17,6 +18,7 @@ import {
   daysLeftFor,
   formatDeadline,
   isSubmitStep,
+  kstDateKey,
   type DeadlineKind,
   withCurrentStep,
   type Posting,
@@ -24,7 +26,6 @@ import {
 import {
   deletePosting,
   setCurrentStep,
-  setPrepDone,
   setStepCompleted as setStepCompletedAction,
   updatePosting,
 } from "@/lib/posting-actions";
@@ -192,13 +193,6 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
     setChoosingStep(false);
   }
 
-  function togglePrep(index: number) {
-    const item = posting.prepItems[index];
-    optimistic(
-      (p) => ({ ...p, prepItems: p.prepItems.map((it, i) => (i === index ? { ...it, done: !it.done } : it)) }),
-      () => setPrepDone(item.id, !item.done),
-    );
-  }
 
   function downloadIcs() {
     const ics = icsFile(posting);
@@ -341,21 +335,12 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
             title="준비 항목"
             aside={<span className="text-xs text-muted-foreground tabular-nums">{doneCount}/{posting.prepItems.length}</span>}
           >
-            <ul className="flex flex-col gap-1">
-              {posting.prepItems.map((item, i) => (
-                <li key={item.id}>
-                  <label className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-2 hover:bg-muted">
-                    <input
-                      type="checkbox"
-                      checked={item.done}
-                      onChange={() => togglePrep(i)}
-                      className="size-4 accent-primary"
-                    />
-                    <span className={cn("text-sm", item.done && "text-muted-foreground line-through")}>{item.label}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
+            <PrepTodos
+              postingId={posting.id}
+              items={posting.prepItems}
+              today={kstDateKey(now)}
+              onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
+            />
           </Section>
           <Separator />
 

@@ -189,3 +189,98 @@ export async function setCurrentStep(postingId: string, current: number): Promis
   ]);
   return undone.error || done.error ? { ok: false, message: FAILED } : { ok: true };
 }
+
+// ── 준비 항목 할 일 (D-20) ──────────────────────────────
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const cleanDate = (v: string | null) => (v && DATE.test(v) ? v : null);
+const cleanLabel = (v: string, max: number) => {
+  const label = v.trim();
+  return label.length >= 1 && label.length <= max ? label : null;
+};
+
+// 맨 뒤 순서 번호
+const nextPosition = (rows: { position: number }[] | null) => (rows?.[0]?.position ?? 0) + 1;
+
+export async function addPrepItem(postingId: string, rawLabel: string): Promise<ActionResult<{ id: string }>> {
+  const label = cleanLabel(rawLabel, 50);
+  if (!label) return { ok: false, message: "항목 이름을 1~50자로 적어 주세요." };
+  const supabase = await createSupabaseServer();
+  const { data: last } = await supabase
+    .from("prep_items")
+    .select("position")
+    .eq("posting_id", postingId)
+    .order("position", { ascending: false })
+    .limit(1);
+  const position = nextPosition(last);
+  const { data, error } = await supabase
+    .from("prep_items")
+    .insert({ posting_id: postingId, position, label })
+    .select("id")
+    .single();
+  return error || !data ? { ok: false, message: FAILED } : { ok: true, id: data.id };
+}
+
+export async function updatePrepItem(
+  itemId: string,
+  change: { label?: string; dueDate?: string | null },
+): Promise<ActionResult> {
+  const row: { label?: string; due_date?: string | null } = {};
+  if (change.label !== undefined) {
+    const label = cleanLabel(change.label, 50);
+    if (!label) return { ok: false, message: "항목 이름을 1~50자로 적어 주세요." };
+    row.label = label;
+  }
+  if (change.dueDate !== undefined) row.due_date = cleanDate(change.dueDate);
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("prep_items").update(row).eq("id", itemId).select("id");
+  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+}
+
+export async function deletePrepItem(itemId: string): Promise<ActionResult> {
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("prep_items").delete().eq("id", itemId).select("id");
+  return !error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." };
+}
+
+export async function addSubtask(prepItemId: string, rawLabel: string): Promise<ActionResult<{ id: string }>> {
+  const label = cleanLabel(rawLabel, 100);
+  if (!label) return { ok: false, message: "할 일을 1~100자로 적어 주세요." };
+  const supabase = await createSupabaseServer();
+  const { data: last } = await supabase
+    .from("prep_subtasks")
+    .select("position")
+    .eq("prep_item_id", prepItemId)
+    .order("position", { ascending: false })
+    .limit(1);
+  const position = nextPosition(last);
+  const { data, error } = await supabase
+    .from("prep_subtasks")
+    .insert({ prep_item_id: prepItemId, position, label })
+    .select("id")
+    .single();
+  return error || !data ? { ok: false, message: FAILED } : { ok: true, id: data.id };
+}
+
+export async function updateSubtask(
+  subtaskId: string,
+  change: { label?: string; done?: boolean; dueDate?: string | null },
+): Promise<ActionResult> {
+  const row: { label?: string; done?: boolean; due_date?: string | null } = {};
+  if (change.label !== undefined) {
+    const label = cleanLabel(change.label, 100);
+    if (!label) return { ok: false, message: "할 일을 1~100자로 적어 주세요." };
+    row.label = label;
+  }
+  if (change.done !== undefined) row.done = change.done;
+  if (change.dueDate !== undefined) row.due_date = cleanDate(change.dueDate);
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("prep_subtasks").update(row).eq("id", subtaskId).select("id");
+  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+}
+
+export async function deleteSubtask(subtaskId: string): Promise<ActionResult> {
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("prep_subtasks").delete().eq("id", subtaskId).select("id");
+  return !error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." };
+}

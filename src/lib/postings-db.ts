@@ -6,10 +6,13 @@ import type { Posting } from "@/lib/postings";
 
 type Row = Database["public"]["Tables"]["postings"]["Row"] & {
   posting_steps: Database["public"]["Tables"]["posting_steps"]["Row"][];
-  prep_items: Database["public"]["Tables"]["prep_items"]["Row"][];
+  prep_items: (Database["public"]["Tables"]["prep_items"]["Row"] & {
+    prep_subtasks: Database["public"]["Tables"]["prep_subtasks"]["Row"][];
+  })[];
 };
 
-const SELECT = "*, posting_steps(*), prep_items(*)";
+const SELECT = "*, posting_steps(*), prep_items(*, prep_subtasks(*))";
+const byPosition = (a: { position: number }, b: { position: number }) => a.position - b.position;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function toPosting(row: Row): Posting {
@@ -26,11 +29,17 @@ function toPosting(row: Row): Posting {
     requiredDocs: row.required_docs,
     sourceUrl: row.source_url,
     steps: [...row.posting_steps]
-      .sort((a, b) => a.position - b.position)
+      .sort(byPosition)
       .map((s) => ({ id: s.id, name: s.name, completedAt: s.completed_at })),
-    prepItems: [...row.prep_items]
-      .sort((a, b) => a.position - b.position)
-      .map((p) => ({ id: p.id, label: p.label, done: p.done })),
+    prepItems: [...row.prep_items].sort(byPosition).map((p) => ({
+      id: p.id,
+      label: p.label,
+      done: p.done,
+      dueDate: p.due_date,
+      subtasks: [...p.prep_subtasks]
+        .sort(byPosition)
+        .map((t) => ({ id: t.id, label: t.label, done: t.done, dueDate: t.due_date })),
+    })),
     isSample: row.is_sample,
   };
 }
