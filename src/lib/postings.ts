@@ -3,11 +3,13 @@
 export type DeadlineKind = "date" | "rolling" | "until_filled";
 
 export type PostingStep = {
+  id: string;
   name: string;
   completedAt: string | null;
 };
 
 export type PrepItem = {
+  id: string;
   label: string;
   done: boolean;
 };
@@ -30,9 +32,8 @@ export type Posting = {
 };
 
 // 준비 항목 기본 목록 + 공고의 제출 서류 중 다른 항목 (DB.md 4번)
-export function defaultPrepItems(requiredDocs: string[]): PrepItem[] {
-  const labels = [...new Set(["이력서", "포트폴리오", "과제", ...requiredDocs])];
-  return labels.map((label) => ({ label, done: false }));
+export function defaultPrepLabels(requiredDocs: string[]) {
+  return [...new Set(["이력서", "포트폴리오", "과제", ...requiredDocs])];
 }
 
 const KST = "Asia/Seoul";

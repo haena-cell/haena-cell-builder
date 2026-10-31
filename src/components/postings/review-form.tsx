@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ChevronDown, Plus, X } from "lucide-react";
@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { defaultPrepItems, type DeadlineKind, type Posting } from "@/lib/postings";
-import { addPracticePosting, clearDraft, loadDraft, type Draft } from "@/lib/practice-store";
+import type { DeadlineKind } from "@/lib/postings";
+import { createPosting } from "@/lib/posting-actions";
+import { clearDraft, loadDraft, type Draft } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
 const DEFAULT_STEPS = ["서류 제출", "서류 결과", "면접", "최종 결과"];
@@ -80,6 +81,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
+  const [saving, startSaving] = useTransition();
 
   const isUnsure = (key: string) => p.unsure.includes(key) && !touched.has(key);
   const touch = (key: string) => setTouched((prev) => new Set(prev).add(key));
@@ -120,26 +122,28 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
     if (deadlineKind === "date" && !date) return setError("마감 날짜를 골라 주세요.");
     if (steps.length === 0) return setError("전형 단계를 하나 이상 넣어 주세요.");
 
-    const posting: Posting = {
-      id: `practice-${Date.now()}`,
-      company: company.trim(),
-      jobTitle: jobTitle.trim(),
-      deadlineKind,
-      // 시각이 없으면 그날 23:59 (한국 시간)로 저장하고 화면에는 날짜만 보여 준다
-      deadlineAt: deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null,
-      deadlineTimeKnown: deadlineKind === "date" && time !== "",
-      location: location.trim() || null,
-      employmentType: employmentType.trim() || null,
-      companySize: companySize.trim() || null,
-      requiredDocs: docs,
-      sourceUrl: draft.source.kind === "link" ? draft.source.url : null,
-      steps: steps.map((name) => ({ name, completedAt: null })),
-      prepItems: defaultPrepItems(docs),
-      isSample: true,
-    };
-    if (!addPracticePosting(posting)) return setError("저장하지 못했어요. 다시 시도해 주세요.");
-    clearDraft();
-    router.push("/app");
+    setError(null);
+    startSaving(async () => {
+      const result = await createPosting({
+        company,
+        jobTitle,
+        deadlineKind,
+        // 시각이 없으면 그날 23:59 (한국 시간)로 저장하고 화면에는 날짜만 보여 준다
+        deadlineAt: deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null,
+        deadlineTimeKnown: deadlineKind === "date" && time !== "",
+        location,
+        employmentType,
+        companySize,
+        requiredDocs: docs,
+        steps,
+        sourceKind: draft.source.kind,
+        sourceUrl: draft.source.kind === "link" ? draft.source.url : null,
+        aiRaw: draft.posting,
+      });
+      if (!result.ok) return setError(result.message);
+      clearDraft();
+      router.push(`/app?saved=${result.id}`);
+    });
   }
 
   return (
@@ -277,7 +281,9 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           <Button type="button" variant="outline" size="lg" className="h-11 px-4" asChild>
             <Link href="/app/new">처음부터</Link>
           </Button>
-          <Button type="submit" size="lg" className="h-11 flex-1 md:flex-none md:px-8">저장</Button>
+          <Button type="submit" size="lg" className="h-11 flex-1 md:flex-none md:px-8" disabled={saving}>
+            {saving ? "저장 중…" : "저장"}
+          </Button>
         </div>
       </form>
     </div>

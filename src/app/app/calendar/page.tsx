@@ -5,17 +5,17 @@ import { AppHeader } from "@/components/postings/app-header";
 import { AddPostingButton } from "@/components/postings/add-posting-button";
 import { PostingCalendar } from "@/components/postings/posting-calendar";
 import { kstDateKey } from "@/lib/postings";
-import { makeSamplePostings } from "@/lib/sample-postings";
+import { getMyPostings } from "@/lib/postings-db";
 
 export const metadata: Metadata = {
   title: "달력",
 };
 
-// 공고 마감일을 월 달력으로. 지금은 연습용 예시 데이터로만 보여 준다.
+// 공고 마감일을 월 달력으로. 내 계정(DB)의 공고를 보여 준다.
 async function Calendar() {
   await connection();
   const now = new Date();
-  return <PostingCalendar initialPostings={makeSamplePostings(now)} today={kstDateKey(now)} />;
+  return <PostingCalendar postings={await getMyPostings()} today={kstDateKey(now)} />;
 }
 
 export default function CalendarPage() {
@@ -31,10 +31,6 @@ export default function CalendarPage() {
           </div>
           <AddPostingButton />
         </div>
-
-        <p className="rounded-lg bg-warning px-3 py-2 text-xs text-warning-foreground">
-          연습용 예시 공고예요. 이 브라우저 탭에 저장한 공고만 보이고, 탭을 닫으면 처음으로 돌아가요.
-        </p>
 
         <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="달력을 불러오는 중" />}>
           <Calendar />

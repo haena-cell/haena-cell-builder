@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarPlus, Check, Download, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +20,7 @@ import {
   type DeadlineKind,
   type Posting,
 } from "@/lib/postings";
-import { loadPostings, savePostings } from "@/lib/practice-store";
-import { makeSamplePostings } from "@/lib/sample-postings";
+import { deletePosting, setPrepDone, setStepCompleted as setStepCompletedAction, updatePosting } from "@/lib/posting-actions";
 import { cn } from "@/lib/utils";
 
 const DEADLINE_KINDS: { value: DeadlineKind; label: string }[] = [
@@ -52,7 +50,7 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 }
 
 // 기본 정보 고치기 (기업명·직무·마감·근무 정보)
-function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p: Posting) => void; onCancel: () => void }) {
+function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p: Posting) => Promise<string | null>; onCancel: () => void }) {
   const initial = kstParts(posting.deadlineAt, posting.deadlineTimeKnown);
   const [company, setCompany] = useState(posting.company);
   const [jobTitle, setJobTitle] = useState(posting.jobTitle);
@@ -63,12 +61,14 @@ function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p:
   const [employmentType, setEmploymentType] = useState(posting.employmentType ?? "");
   const [companySize, setCompanySize] = useState(posting.companySize ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!company.trim() || !jobTitle.trim()) return setError("기업명과 직무를 채워 주세요.");
     if (deadlineKind === "date" && !date) return setError("마감 날짜를 골라 주세요.");
-    onSave({
+    setSaving(true);
+    const problem = await onSave({
       ...posting,
       company: company.trim(),
       jobTitle: jobTitle.trim(),
@@ -79,6 +79,8 @@ function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p:
       employmentType: employmentType.trim() || null,
       companySize: companySize.trim() || null,
     });
+    setSaving(false);
+    setError(problem);
   }
 
   return (
@@ -127,85 +129,78 @@ function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p:
       </div>
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <div className="flex gap-2">
-        <Button type="submit" size="lg" className="px-5">저장</Button>
+        <Button type="submit" size="lg" className="px-5" disabled={saving}>{saving ? "저장 중…" : "저장"}</Button>
         <Button type="button" variant="outline" size="lg" className="px-4" onClick={onCancel}>취소</Button>
       </div>
     </form>
   );
 }
 
-export function PostingDetail() {
-  const { id } = useParams<{ id: string }>();
+export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Posting; nowIso: string }) {
   const router = useRouter();
-  const [postings, setPostings] = useState<Posting[] | null>(null);
-  const [now, setNow] = useState<Date | null>(null);
+  const [posting, setPosting] = useState(initialPosting);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const now = new Date(nowIso);
 
-  useEffect(() => {
-    const n = new Date();
-    /* eslint-disable react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다 */
-    setPostings(loadPostings(makeSamplePostings(n)));
-    setNow(n);
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, []);
-
-  if (!postings || !now) {
-    return <div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="공고를 불러오는 중" />;
+  // 화면을 먼저 바꾸고 DB 에 저장한다. 실패하면 되돌린다.
+  async function optimistic(change: (p: Posting) => Posting, save: () => Promise<{ ok: boolean; message?: string }>) {
+    const before = posting;
+    setPosting(change);
+    const result = await save();
+    if (!result.ok) {
+      setPosting(before);
+      toast.error(result.message ?? "저장하지 못했어요. 다시 시도해 주세요.");
+    }
+    return result.ok;
   }
 
-  const posting = postings.find((p) => p.id === id);
-  if (!posting) {
-    return (
-      <div className="flex flex-col items-start gap-3 rounded-xl border border-border p-6">
-        <p className="font-semibold">공고를 찾을 수 없어요</p>
-        <p className="text-sm text-muted-foreground">지워졌거나, 연습용이라 탭을 닫으면서 사라졌을 수 있어요.</p>
-        <Button size="lg" className="px-4" asChild>
-          <Link href="/app">목록으로</Link>
-        </Button>
-      </div>
+  function saveStep(stepIndex: number, completed: boolean) {
+    const step = posting.steps[stepIndex];
+    return optimistic(
+      (p) => ({
+        ...p,
+        steps: p.steps.map((s, i) => (i === stepIndex ? { ...s, completedAt: completed ? new Date().toISOString() : null } : s)),
+      }),
+      () => setStepCompletedAction(step.id, completed),
     );
   }
 
-  function update(fn: (p: Posting) => Posting) {
-    setPostings((prev) => {
-      if (!prev) return prev;
-      const next = prev.map((p) => (p.id === id ? fn(p) : p));
-      savePostings(next);
-      return next;
-    });
-  }
-
-  function setStepCompleted(stepIndex: number, completedAt: string | null) {
-    update((p) => ({ ...p, steps: p.steps.map((s, i) => (i === stepIndex ? { ...s, completedAt } : s)) }));
-  }
-
-  function completeStep(stepIndex: number) {
-    setStepCompleted(stepIndex, new Date().toISOString());
-    toast(`${posting!.steps[stepIndex].name} 완료`, {
-      action: { label: "되돌리기", onClick: () => setStepCompleted(stepIndex, null) },
+  async function completeStep(stepIndex: number) {
+    if (!(await saveStep(stepIndex, true))) return;
+    toast(`${posting.steps[stepIndex].name} 완료`, {
+      action: { label: "되돌리기", onClick: () => saveStep(stepIndex, false) },
     });
   }
 
   function togglePrep(index: number) {
-    update((p) => ({ ...p, prepItems: p.prepItems.map((item, i) => (i === index ? { ...item, done: !item.done } : item)) }));
+    const item = posting.prepItems[index];
+    optimistic(
+      (p) => ({ ...p, prepItems: p.prepItems.map((it, i) => (i === index ? { ...it, done: !it.done } : it)) }),
+      () => setPrepDone(item.id, !item.done),
+    );
   }
 
   function downloadIcs() {
-    const ics = icsFile(posting!);
+    const ics = icsFile(posting);
     if (!ics) return;
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${posting!.company}-마감.ics`;
+    a.download = `${posting.company}-마감.ics`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  function remove() {
-    const next = postings!.filter((p) => p.id !== id);
-    savePostings(next);
-    toast(`${posting!.company} 공고를 지웠어요`);
+  async function remove() {
+    setDeleting(true);
+    const result = await deletePosting(posting.id);
+    if (!result.ok) {
+      setDeleting(false);
+      return toast.error(result.message);
+    }
+    toast(`${posting.company} 공고를 지웠어요`);
     router.push("/app");
   }
 
@@ -230,10 +225,13 @@ export function PostingDetail() {
         <EditForm
           posting={posting}
           onCancel={() => setEditing(false)}
-          onSave={(next) => {
-            update(() => next);
+          onSave={async (next) => {
+            const result = await updatePosting(posting.id, next);
+            if (!result.ok) return result.message;
+            setPosting(next);
             setEditing(false);
             toast("고친 내용을 저장했어요");
+            return null;
           }}
         />
       ) : (
@@ -286,7 +284,7 @@ export function PostingDetail() {
           >
             <ul className="flex flex-col gap-1">
               {posting.prepItems.map((item, i) => (
-                <li key={`${item.label}-${i}`}>
+                <li key={item.id}>
                   <label className="flex cursor-pointer items-center gap-3 rounded-md px-1 py-2 hover:bg-muted">
                     <input
                       type="checkbox"
@@ -337,7 +335,7 @@ export function PostingDetail() {
             {confirmDelete ? (
               <div className="flex items-center gap-2" role="alert">
                 <span className="text-sm">정말 지울까요?</span>
-                <Button variant="destructive" size="lg" className="px-3" onClick={remove}>지우기</Button>
+                <Button variant="destructive" size="lg" className="px-3" onClick={remove} disabled={deleting}>{deleting ? "지우는 중…" : "지우기"}</Button>
                 <Button variant="ghost" size="lg" className="px-3" onClick={() => setConfirmDelete(false)}>취소</Button>
               </div>
             ) : (

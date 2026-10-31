@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { PostingCard } from "@/components/postings/posting-card";
 import { currentStepIndex, daysLeftFor, type Posting } from "@/lib/postings";
-import { loadPostings, savePostings, takeJustSaved } from "@/lib/practice-store";
+import { setStepCompleted as setStepCompletedAction } from "@/lib/posting-actions";
 
 type Section = { title: string; postings: Posting[] };
 
@@ -45,43 +46,53 @@ export function PostingList({
   initialPostings: Posting[];
   daysLeft: Record<string, number | null>;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [postings, setPostings] = useState(initialPostings);
   // 처음 그릴 때는 서버가 센 D-day, 그 뒤에는 브라우저에서 센다
   const [now, setNow] = useState<Date | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);
 
-  // 이 탭에 연습용으로 저장된 공고로 바꾸고, 방금 저장한 공고를 알린다
+  // 확인 화면에서 방금 저장한 공고(?saved=번호)를 알리고 잠깐 강조한다
   useEffect(() => {
-    const justSaved = takeJustSaved();
-    /* eslint-disable react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다 */
-    setPostings(loadPostings(initialPostings));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 지금 시각은 브라우저에서 화면을 그린 뒤에 센다
     setNow(new Date());
-    /* eslint-enable react-hooks/set-state-in-effect */
-    if (justSaved) {
-      setHighlightId(justSaved);
-      toast("저장했어요 · 연습용이라 이 탭을 닫으면 사라져요");
-      const timer = setTimeout(() => setHighlightId(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [initialPostings]);
+    const justSaved = searchParams.get("saved");
+    if (!justSaved) return;
+    setHighlightId(justSaved);
+    toast("저장했어요", { id: `saved-${justSaved}` });
+    router.replace("/app", { scroll: false });
+    const timer = setTimeout(() => setHighlightId(null), 3000);
+    return () => clearTimeout(timer);
+  }, [searchParams, router]);
 
   function setStepCompleted(postingId: string, stepIndex: number, completedAt: string | null) {
-    setPostings((prev) => {
-      const next = prev.map((p) =>
+    setPostings((prev) =>
+      prev.map((p) =>
         p.id !== postingId
           ? p
           : { ...p, steps: p.steps.map((s, i) => (i === stepIndex ? { ...s, completedAt } : s)) },
-      );
-      savePostings(next);
-      return next;
-    });
+      ),
+    );
   }
 
-  function handleComplete(posting: Posting, stepIndex: number) {
-    setStepCompleted(posting.id, stepIndex, new Date().toISOString());
+  // 화면을 먼저 바꾸고 DB 에 저장한다. 실패하면 되돌린다.
+  async function saveStep(posting: Posting, stepIndex: number, completed: boolean) {
+    const previous = posting.steps[stepIndex].completedAt;
+    setStepCompleted(posting.id, stepIndex, completed ? new Date().toISOString() : null);
+    const result = await setStepCompletedAction(posting.steps[stepIndex].id, completed);
+    if (!result.ok) {
+      setStepCompleted(posting.id, stepIndex, previous);
+      toast.error(result.message);
+    }
+    return result.ok;
+  }
+
+  async function handleComplete(posting: Posting, stepIndex: number) {
+    if (!(await saveStep(posting, stepIndex, true))) return;
     toast(`${posting.company} · ${posting.steps[stepIndex].name} 완료`, {
-      action: { label: "되돌리기", onClick: () => setStepCompleted(posting.id, stepIndex, null) },
+      action: { label: "되돌리기", onClick: () => saveStep(posting, stepIndex, false) },
     });
   }
 

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { cn } from "@/lib/utils";
 import { kstDateKey, type Posting } from "@/lib/postings";
-import { loadPostings } from "@/lib/practice-store";
 
 // 날짜 칸 하나는 한국 시간 날짜 문자열(YYYY-MM-DD)로 다룬다.
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -47,16 +46,9 @@ function formatDay(key: string) {
   );
 }
 
-export function PostingCalendar({ initialPostings, today }: { initialPostings: Posting[]; today: string }) {
-  const [postings, setPostings] = useState(initialPostings);
+export function PostingCalendar({ postings, today }: { postings: Posting[]; today: string }) {
   const [month, setMonth] = useState({ year: Number(today.slice(0, 4)), month: Number(today.slice(5, 7)) });
   const [selected, setSelected] = useState(today);
-
-  // 이 탭에 연습용으로 저장된 공고로 바꾼다
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다
-    setPostings(loadPostings(initialPostings));
-  }, [initialPostings]);
 
   const byDate = new Map<string, Posting[]>();
   const noDate: Posting[] = [];

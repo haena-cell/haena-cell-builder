@@ -5,17 +5,17 @@ import { AppHeader } from "@/components/postings/app-header";
 import { AddPostingButton } from "@/components/postings/add-posting-button";
 import { PostingList } from "@/components/postings/posting-list";
 import { daysLeftFor } from "@/lib/postings";
-import { makeSamplePostings } from "@/lib/sample-postings";
+import { getMyPostings } from "@/lib/postings-db";
 
 export const metadata: Metadata = {
   title: "내 공고",
 };
 
-// 4단계 대표 화면: 공고 목록. 지금은 연습용 예시 데이터로만 보여 준다.
+// 공고 목록: 내 계정(DB)의 공고. 처음엔 연습용 예시 3개가 들어 있다.
 async function Postings() {
   await connection();
   const now = new Date();
-  const postings = makeSamplePostings(now);
+  const postings = await getMyPostings();
   const daysLeft = Object.fromEntries(
     postings.map((p) => [p.id, daysLeftFor(p, now)]),
   );
@@ -45,10 +45,6 @@ export default function AppHomePage() {
           </div>
           <AddPostingButton />
         </div>
-
-        <p className="rounded-lg bg-warning px-3 py-2 text-xs text-warning-foreground">
-          연습용 예시 공고예요. [제출 완료]·체크·저장은 이 브라우저 탭에만 임시로 남고, 탭을 닫으면 처음으로 돌아가요.
-        </p>
 
         <Suspense fallback={<PostingsSkeleton />}>
           <Postings />
