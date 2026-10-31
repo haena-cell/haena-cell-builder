@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ExtractInput, ExtractResult } from "@/lib/extract-posting";
+import { findSavedByLink, type PostingSummary } from "@/lib/posting-actions";
 import { saveDraft, type DraftSource } from "@/lib/practice-store";
 
 type Mode = "link" | "text" | "image";
@@ -33,6 +35,7 @@ export function NewPostingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
+  const [saved, setSaved] = useState<PostingSummary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -68,7 +71,16 @@ export function NewPostingForm() {
     setMode(from);
     setLoading(true);
     setError(null);
+    setSaved(null);
     try {
+      // 이미 저장한 링크면 정리하지 않고 알려 준다 (T-08)
+      if (input.kind === "link") {
+        const existing = await findSavedByLink(input.url);
+        if (existing) {
+          setSaved(existing);
+          return;
+        }
+      }
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,7 +131,7 @@ export function NewPostingForm() {
             inputMode="url"
             placeholder="https://"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => { setUrl(e.target.value); setSaved(null); }}
             disabled={loading}
             className="h-10 flex-1"
           />
@@ -248,6 +260,19 @@ export function NewPostingForm() {
         <p className="text-sm text-destructive" role="alert">
           {error}
         </p>
+      )}
+      {saved && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warning px-3 py-3" role="alert">
+          <div className="min-w-0 text-sm text-warning-foreground">
+            <p className="font-semibold">이미 저장한 공고예요</p>
+            <p className="truncate">
+              {saved.company} · {saved.jobTitle}
+            </p>
+          </div>
+          <Button variant="outline" size="lg" className="bg-background px-3" asChild>
+            <Link href={`/app/postings/${saved.id}`}>그 공고 보기</Link>
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -8,7 +8,9 @@ import type { Json } from "@/lib/database.types";
 
 // 화면에서 부르는 공고 저장·수정·삭제. 누가 무엇을 바꿀 수 있는지는 DB 접근 규칙(RLS)이 본인 것만으로 막는다.
 
-export type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; message: string };
+export type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; message: string; existingId?: string };
+
+export type PostingSummary = { id: string; company: string; jobTitle: string };
 
 const FAILED = "저장하지 못했어요. 다시 시도해 주세요.";
 const KINDS: DeadlineKind[] = ["date", "rolling", "until_filled"];
@@ -79,7 +81,10 @@ export async function createPosting(input: NewPosting): Promise<ActionResult<{ i
     })
     .select("id")
     .single();
-  if (error?.code === "23505") return { ok: false, message: "이미 저장한 공고예요. 목록에서 찾아보세요." };
+  if (error?.code === "23505") {
+    const existing = await findSavedByLink(input.sourceUrl ?? "");
+    return { ok: false, message: "이미 저장한 공고예요.", existingId: existing?.id };
+  }
   if (error || !data) return { ok: false, message: FAILED };
 
   const postingId = data.id;
@@ -126,4 +131,39 @@ export async function setPrepDone(itemId: string, done: boolean): Promise<Action
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("prep_items").update({ done }).eq("id", itemId).select("id");
   return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+}
+
+// 같은 링크로 이미 저장한 공고 (정리하기 전에 미리 알려 주기, T-08)
+export async function findSavedByLink(url: string): Promise<PostingSummary | null> {
+  const normalized = normalizeSourceUrl(url);
+  if (!normalized) return null;
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase
+    .from("postings")
+    .select("id, company, job_title")
+    .eq("source_url_normalized", normalized)
+    .maybeSingle();
+  return data ? { id: data.id, company: data.company, jobTitle: data.job_title } : null;
+}
+
+const kstDay = (iso: string | null) =>
+  iso ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(iso)) : null;
+
+// 기업명 + 직무 + 마감일(한국 날짜)이 같은 공고. 막지는 않고 경고만 한다 (DB.md 7번)
+export async function findSimilarPostings(
+  f: Pick<PostingFields, "company" | "jobTitle" | "deadlineKind" | "deadlineAt">,
+): Promise<PostingSummary[]> {
+  const company = f.company?.trim();
+  const jobTitle = f.jobTitle?.trim();
+  if (!company || !jobTitle) return [];
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase
+    .from("postings")
+    .select("id, company, job_title, deadline_at")
+    .eq("company", company)
+    .eq("job_title", jobTitle);
+  const day = f.deadlineKind === "date" ? kstDay(f.deadlineAt) : null;
+  return (data ?? [])
+    .filter((p) => kstDay(p.deadline_at) === day)
+    .map((p) => ({ id: p.id, company: p.company, jobTitle: p.job_title }));
 }

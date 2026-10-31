@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ChevronDown, Plus, X } from "lucide-react";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { DeadlineKind } from "@/lib/postings";
-import { createPosting } from "@/lib/posting-actions";
+import { createPosting, findSimilarPostings, type PostingSummary } from "@/lib/posting-actions";
 import { clearDraft, loadDraft, type Draft } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
@@ -82,6 +82,17 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
   const [error, setError] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
   const [saving, startSaving] = useTransition();
+  // 비슷한 공고 경고: 어떤 값으로 확인했는지(key)와 찾은 공고
+  const [similar, setSimilar] = useState<{ key: string; items: PostingSummary[] } | null>(null);
+  const [existingId, setExistingId] = useState<string | null>(null);
+  const similarKey = `${company.trim()}|${jobTitle.trim()}|${deadlineKind}|${deadlineKind === "date" ? date : ""}`;
+  const showSimilar = similar !== null && similar.key === similarKey;
+  const similarRef = useRef<HTMLDivElement>(null);
+
+  // 경고가 뜨면 보이는 곳으로 옮긴다 (휴대폰에서는 폼 아래쪽이라 안 보일 수 있다)
+  useEffect(() => {
+    if (similar) similarRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [similar]);
 
   const isUnsure = (key: string) => p.unsure.includes(key) && !touched.has(key);
   const touch = (key: string) => setTouched((prev) => new Set(prev).add(key));
@@ -123,13 +134,20 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
     if (steps.length === 0) return setError("전형 단계를 하나 이상 넣어 주세요.");
 
     setError(null);
+    setExistingId(null);
+    // 시각이 없으면 그날 23:59 (한국 시간)로 저장하고 화면에는 날짜만 보여 준다
+    const deadlineAt = deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null;
     startSaving(async () => {
+      // 처음 누르면 비슷한 공고를 찾아 경고만 하고, 한 번 더 누르면 그대로 저장한다 (T-08)
+      if (!showSimilar) {
+        const items = await findSimilarPostings({ company, jobTitle, deadlineKind, deadlineAt });
+        if (items.length > 0) return setSimilar({ key: similarKey, items });
+      }
       const result = await createPosting({
         company,
         jobTitle,
         deadlineKind,
-        // 시각이 없으면 그날 23:59 (한국 시간)로 저장하고 화면에는 날짜만 보여 준다
-        deadlineAt: deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null,
+        deadlineAt,
         deadlineTimeKnown: deadlineKind === "date" && time !== "",
         location,
         employmentType,
@@ -140,7 +158,11 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         sourceUrl: draft.source.kind === "link" ? draft.source.url : null,
         aiRaw: draft.posting,
       });
-      if (!result.ok) return setError(result.message);
+      if (!result.ok) {
+        setError(result.message);
+        setExistingId(result.existingId ?? null);
+        return;
+      }
       clearDraft();
       router.push(`/app?saved=${result.id}`);
     });
@@ -274,7 +296,32 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           </div>
         </Field>
 
-        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        {error && (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+            {existingId && (
+              <Link href={`/app/postings/${existingId}`} className="ml-2 font-medium underline underline-offset-2">
+                그 공고 보기
+              </Link>
+            )}
+          </p>
+        )}
+
+        {showSimilar && (
+          <div ref={similarRef} className="flex flex-col gap-2 rounded-lg bg-warning px-3 py-3 text-sm text-warning-foreground" role="alert">
+            <p className="font-semibold">비슷한 공고가 있어요</p>
+            <p>기업명 · 직무 · 마감일이 같은 공고가 이미 있어요. 다른 공고라면 [그래도 저장]을 눌러 주세요.</p>
+            <ul className="flex flex-col gap-1">
+              {similar.items.map((item) => (
+                <li key={item.id}>
+                  <Link href={`/app/postings/${item.id}`} className="underline underline-offset-2">
+                    {item.company} · {item.jobTitle}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* 휴대폰: [저장] 화면 아래 고정 */}
         <div className="fixed inset-x-0 bottom-0 z-10 flex gap-2 border-t border-border bg-background p-4 md:static md:border-0 md:p-0">
@@ -282,7 +329,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
             <Link href="/app/new">처음부터</Link>
           </Button>
           <Button type="submit" size="lg" className="h-11 flex-1 md:flex-none md:px-8" disabled={saving}>
-            {saving ? "저장 중…" : "저장"}
+            {saving ? "저장 중…" : showSimilar ? "그래도 저장" : "저장"}
           </Button>
         </div>
       </form>
