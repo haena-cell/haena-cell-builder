@@ -11,39 +11,45 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { StepBar } from "@/components/postings/step-bar";
 
 const pains = [
   {
-    title: "결정의 이유가 사라져요",
-    body: "작업이 끝나면 왜 그렇게 정했는지 기억이 나지 않아요.",
+    title: "공고가 여기저기 흩어져 있어요",
+    body: "인스타그램 · 채용 사이트 · 커뮤니티에서 본 공고가 캡처와 북마크로 따로 남아요.",
   },
   {
-    title: "기록이 흩어져 있어요",
-    body: "노션 · 사진첩 · 피그마에 조각조각 남아 있어요.",
+    title: "옮겨 적는 데 시간이 걸려요",
+    body: "공고 하나마다 기업명 · 마감일 · 제출 서류를 노션이나 시트에 직접 옮겨 적어요.",
   },
   {
-    title: "어떻게 써야 할지 막막해요",
-    body: "케이스 스터디를 어떤 구조로 풀어야 할지 모르겠어요.",
+    title: "어디까지 했는지 헷갈려요",
+    body: "여러 곳에 동시에 지원하면 서류를 냈는지, 다음이 면접인지 놓치기 쉬워요.",
   },
 ];
 
 const steps = [
   {
-    title: "작업하며 한 줄 남기기",
-    body: "고민, 바꾼 이유, 시도한 것을 메모나 스크린샷으로 남겨요.",
+    title: "공고 링크 붙여넣기",
+    body: "채용 공고 주소를 붙여넣어요. 링크로 못 읽는 공고는 글이나 캡처로 넣어요.",
   },
   {
-    title: "AI 가 흐름으로 정리",
-    body: "기록을 문제 → 탐색 → 결정 → 결과 흐름으로 묶어요.",
+    title: "AI가 정리, 나는 확인만",
+    body: "기업명 · 직무 · 마감일 · 제출 서류 · 전형 절차를 채워 드려요. 틀린 칸만 고쳐 저장해요.",
   },
   {
-    title: "초안을 내 말투로",
-    body: "케이스 스터디 초안을 받아 내 말투로 다듬어요.",
+    title: "카드와 달력으로 관리",
+    body: "마감이 가까운 순서로 카드가 쌓이고, 서류를 내면 [제출 완료]로 다음 단계로 넘겨요.",
   },
+];
+
+// 예시 화면에 쓰는 가짜 공고 단계
+const exampleSteps = [
+  { id: "1", name: "서류 제출", completedAt: null },
+  { id: "2", name: "과제", completedAt: null },
+  { id: "3", name: "면접", completedAt: null },
+  { id: "4", name: "최종 결과", completedAt: null },
 ];
 
 function SectionLabel({ no, children }: { no: string; children: string }) {
@@ -65,8 +71,8 @@ export default function Home() {
     <div className="flex flex-1 flex-col overflow-x-hidden">
       {/* 머리 */}
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-5 py-5">
-        <span className="text-lg font-extrabold tracking-tight">과정노트</span>
-        <Badge variant="outline">연습용 가상 서비스</Badge>
+        <span className="text-lg font-extrabold tracking-tight">이름 미정</span>
+        <Badge variant="outline">연습용 서비스</Badge>
       </header>
       <div className="mx-auto w-full max-w-5xl px-5">
         <ThickRule />
@@ -77,22 +83,22 @@ export default function Home() {
         <section className="mx-auto max-w-5xl px-5 py-16 md:py-28">
           <Reveal>
             <Badge variant="secondary" className="mb-6">
-              연습용으로 만든 가상의 서비스예요
+              연습용으로 만든 서비스예요 · 가짜 공고로 먼저 써 보세요
             </Badge>
             <h1 className="max-w-4xl text-4xl leading-[1.15] font-extrabold tracking-tight md:text-6xl">
-              작업하며 남긴 메모가
+              채용공고 링크 하나로
               <br />
-              <span className="text-primary">케이스 스터디</span>가 돼요
+              <span className="text-primary">지원 현황</span>까지 한곳에
             </h1>
             <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">
-              포트폴리오를 준비하는 디자인 학습자를 위한 AI 기록장이에요. 작업
-              중에 한 줄씩만 남기면, 끝났을 때 과정이 담긴 케이스 스터디 초안을
-              만들어 드려요.
+              여러 회사에 동시에 지원하는 취준생을 위한 공고 관리 서비스예요.
+              링크를 붙여넣으면 마감일과 전형 단계를 정리해 드리고, 마감이
+              가까운 공고와 다음에 할 일을 한 화면에 보여 드려요.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <StartButton className="h-12 px-8 text-base font-bold" />
               <span className="text-sm text-muted-foreground">
-                과정노트 · 디자인 학습자를 위한 AI 기록장
+                Google 계정으로 바로 시작해요
               </span>
             </div>
           </Reveal>
@@ -107,13 +113,13 @@ export default function Home() {
           <Reveal>
             <SectionLabel no="01">문제</SectionLabel>
             <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-              남은 건 완성 화면뿐이에요
+              공고 모으기가 또 하나의 일이 돼요
             </h2>
             <p className="mt-6 max-w-3xl text-base leading-relaxed text-muted-foreground md:text-lg">
-              프로젝트를 끝내고 포트폴리오를 정리하려고 하면, 왜 그 결정을
-              했는지 기억이 잘 나지 않아요. 남은 건 완성 화면과 흩어진
-              스크린샷뿐이라 결과만 보여주는 포트폴리오가 돼요. 케이스 스터디를
-              처음부터 쓰려니 빈 문서 앞에서 몇 시간씩 막혀요.
+              마음에 드는 공고를 보면 일단 캡처하거나 북마크해 두지만, 마감일을
+              챙기려면 결국 노션이나 스프레드시트에 하나씩 옮겨 적어야 해요.
+              지원하는 곳이 늘어날수록 어디에 서류를 냈고 다음이 무엇인지
+              놓치기 쉬워요.
             </p>
           </Reveal>
           <div className="mt-12 grid gap-5 md:grid-cols-3">
@@ -143,7 +149,7 @@ export default function Home() {
             <Reveal>
               <SectionLabel no="02">작동 방식</SectionLabel>
               <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-                한 줄씩, 세 단계면 돼요
+                링크 하나, 세 단계면 돼요
               </h2>
             </Reveal>
             <div className="mt-12 grid gap-10 md:grid-cols-2 md:items-start">
@@ -174,40 +180,26 @@ export default function Home() {
                 </p>
                 <Card className="shadow-[8px_8px_0_0_var(--foreground)] ring-2 ring-foreground">
                   <CardHeader className="border-b">
-                    <CardTitle className="font-extrabold">
-                      졸업작품 · 온보딩 개선
-                    </CardTitle>
-                    <CardDescription>오늘 남긴 기록 3개</CardDescription>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <CardTitle className="font-extrabold">예시상사</CardTitle>
+                        <CardDescription>프로덕트 디자이너</CardDescription>
+                      </div>
+                      <Badge variant="destructive">D-2</Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="memo">한 줄 기록</Label>
-                      <Input
-                        id="memo"
-                        readOnly
-                        tabIndex={-1}
-                        value="가입 단계를 3개에서 1개로 줄여 봄"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="why">바꾼 이유</Label>
-                      <Textarea
-                        id="why"
-                        readOnly
-                        tabIndex={-1}
-                        value="첫 화면에서 너무 많은 걸 물어봐서 시작하기 전에 지친다는 생각이 들었다."
-                      />
-                    </div>
+                    <StepBar steps={exampleSteps} current={0} />
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">문제</Badge>
-                      <Badge variant="outline">탐색</Badge>
-                      <Badge>결정</Badge>
-                      <Badge variant="outline">결과</Badge>
+                      <Badge>이력서</Badge>
+                      <Badge>포트폴리오</Badge>
+                      <Badge variant="outline">과제</Badge>
                     </div>
                   </CardContent>
-                  <CardFooter className="border-t">
-                    <Button className="w-full" tabIndex={-1}>
-                      케이스 스터디 초안 만들기
+                  <CardFooter className="justify-between gap-3 border-t">
+                    <span className="text-sm text-muted-foreground">마감 23:59 · 지금: 서류 제출</span>
+                    <Button variant="outline" tabIndex={-1}>
+                      제출 완료
                     </Button>
                   </CardFooter>
                 </Card>
@@ -229,8 +221,8 @@ export default function Home() {
                     처음 써 보면 ✨
                   </span>
                   <CardTitle className="mt-2 text-2xl leading-snug font-extrabold tracking-tight">
-                    흩어진 메모 몇 줄을 넣었더니, 내가 잊고 있던 결정 과정까지
-                    담긴 초안이 나와요.
+                    링크를 붙여넣고 확인만 눌렀더니, 마감일과 전형 단계가 카드
+                    한 장에 정리돼 있어요.
                   </CardTitle>
                 </CardHeader>
               </Card>
@@ -242,8 +234,8 @@ export default function Home() {
                     계속 쓰게 되는 이유
                   </span>
                   <CardTitle className="mt-2 text-2xl leading-snug font-extrabold tracking-tight">
-                    프로젝트를 할 때마다 기록이 쌓이고, 쌓인 기록이 다음
-                    포트폴리오의 재료가 돼요.
+                    서류를 내고, 과제를 하고, 면접을 볼 때마다 단계를 넘기며
+                    다음에 할 일을 확인하게 돼요.
                   </CardTitle>
                 </CardHeader>
               </Card>
@@ -260,22 +252,22 @@ export default function Home() {
           <Reveal>
             <SectionLabel no="04">다른 점</SectionLabel>
             <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-              내 기록에서 시작해요
+              옮겨 적지 않아도 돼요
             </h2>
           </Reveal>
           <div className="mt-12 grid max-w-3xl gap-0">
             {[
               {
-                label: "노션 · 메모 앱",
-                body: "기록은 남지만, 정리는 직접 해야 해요.",
+                label: "노션 · 스프레드시트",
+                body: "원하는 대로 만들 수 있지만, 공고마다 직접 옮겨 적어야 해요.",
               },
               {
-                label: "GPT",
-                body: "한 번에 써 달라고 하면 과정이 없어서 누구에게나 해당하는 일반적인 글이 나와요.",
+                label: "채용 사이트 관심 공고",
+                body: "그 사이트 공고만 모이고, 인스타그램 · 커뮤니티에서 본 공고는 따로 챙겨야 해요.",
               },
               {
-                label: "과정노트",
-                body: "작업하는 동안 남긴 내 기록에서 시작해서, 나만의 과정이 담긴 글이 나와요.",
+                label: "이름 미정",
+                body: "어디서 본 공고든 링크 · 글 · 캡처로 넣으면 정리되고, 전형 단계까지 한곳에서 봐요.",
                 highlight: true,
               },
             ].map((row) => (
@@ -310,12 +302,12 @@ export default function Home() {
           <div className="mx-auto max-w-3xl px-5 py-16 text-center md:py-28">
             <Reveal>
               <h2 className="text-3xl font-extrabold tracking-tight md:text-5xl">
-                다음 포트폴리오는
+                이번 공고부터
                 <br />
-                과정부터 남겨 보세요
+                한곳에 모아 보세요
               </h2>
               <p className="mt-6 text-base leading-relaxed opacity-80 md:text-lg">
-                아직 준비 중이에요. 열리면 가장 먼저 써 봐 주세요.
+                연습용 서비스예요. 처음 들어오면 연습용 예시 공고 3개로 먼저 둘러볼 수 있어요.
               </p>
               <StartButton className="mt-10 h-12 px-8 text-base font-bold" />
             </Reveal>
@@ -335,8 +327,8 @@ export default function Home() {
               <div>
                 <p className="text-xl font-extrabold tracking-tight">1018</p>
                 <p className="mt-2 text-base leading-relaxed text-muted-foreground md:text-lg">
-                  프로덕트 디자인을 공부하며 포트폴리오를 직접 정리해 보고
-                  있어서, 이 막막함을 매일 겪고 있어요.
+                  취준생이 공고를 옮겨 적는 시간을 줄이고, 지원을 놓치지 않도록
+                  돕고 싶어서 만들고 있어요.
                 </p>
               </div>
             </div>
@@ -348,7 +340,7 @@ export default function Home() {
       <footer className="mx-auto w-full max-w-5xl px-5 pb-10">
         <ThickRule />
         <div className="flex flex-col gap-2 pt-6 text-sm text-muted-foreground md:flex-row md:justify-between">
-          <span className="font-bold text-foreground">과정노트 © 2026</span>
+          <span className="font-bold text-foreground">이름 미정 © 2026</span>
           <span>Built with Claude Code · AI 프로덕트 빌더 클럽 3기</span>
         </div>
       </footer>

@@ -11,8 +11,11 @@ const pretendard = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "과정노트 — 작업하며 남긴 메모가 케이스 스터디가 돼요",
-  description: "포트폴리오를 준비하는 디자인 학습자를 위한 AI 기록장이에요. 작업 중에 한 줄씩만 남기면, 끝났을 때 과정이 담긴 케이스 스터디 초안을 만들어 드려요.",
+  title: {
+    default: "이름 미정 — 채용공고 링크 하나로 지원 현황까지 한곳에",
+    template: "%s · 이름 미정",
+  },
+  description: "여러 회사에 동시에 지원하는 취준생을 위한 공고 관리 서비스예요. 링크를 붙여넣으면 마감일과 전형 단계를 정리하고, 마감이 가까운 공고와 다음에 할 일을 한 화면에 보여 드려요.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
