@@ -49,7 +49,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col gap-1.5 rounded-lg", unsure && "-mx-2 bg-warning px-2 py-2")}>
+    <div className={cn("flex flex-col gap-1.5 rounded-xl", unsure && "-mx-2 bg-warning px-2 py-2")}>
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor={htmlFor}>{label}</Label>
         {unsure && <span className="text-xs font-medium text-warning-foreground">확인해 주세요</span>}
@@ -175,11 +175,11 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           <h1 className="text-xl font-bold tracking-tight md:text-2xl">AI가 정리했어요</h1>
           <p className="mt-1 text-sm text-muted-foreground">틀린 칸만 고쳐 주세요. 노란 칸은 꼭 확인해 주세요.</p>
         </div>
-        {draft.isExample && <Badge className="shrink-0 bg-warning text-warning-foreground">연습용 예시</Badge>}
+        {draft.isExample && <Badge variant="warning" className="shrink-0">연습용 예시</Badge>}
       </div>
 
       {/* 원본 미리보기: 휴대폰은 접어 둔다 */}
-      <section className="rounded-lg border border-border">
+      <section className="rounded-xl border border-border">
         <button
           type="button"
           className="flex w-full items-center justify-between px-3 py-2.5 text-sm md:pointer-events-none"
@@ -225,7 +225,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
             {DEADLINE_KINDS.map((k) => (
               <Button key={k.value} type="button" variant="outline" size="lg" role="radio"
                 aria-checked={deadlineKind === k.value}
-                className={cn("bg-background", deadlineKind === k.value && "border-primary bg-muted font-semibold")}
+                className={cn("bg-card", deadlineKind === k.value && "border-primary bg-muted font-semibold")}
                 onClick={() => { setDeadlineKind(k.value); touch("deadline"); }}>
                 {k.label}
               </Button>
@@ -233,9 +233,9 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           </div>
           {deadlineKind === "date" && (
             <div className="grid grid-cols-2 gap-2">
-              <Input type="date" aria-label="마감 날짜" className="h-10 bg-background" value={date}
+              <Input type="date" aria-label="마감 날짜" className="h-10 bg-card" value={date}
                 onChange={(e) => { setDate(e.target.value); touch("deadline"); }} />
-              <Input type="time" aria-label="마감 시각 (없으면 비워 두기)" className="h-10 bg-background" value={time}
+              <Input type="time" aria-label="마감 시각 (없으면 비워 두기)" className="h-10 bg-card" value={time}
                 onChange={(e) => setTime(e.target.value)} />
             </div>
           )}
@@ -258,14 +258,14 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           <div className="flex flex-wrap gap-2">
             {docOptions.map((doc) => (
               <Button key={doc} type="button" variant="outline" size="sm" aria-pressed={docs.includes(doc)}
-                className={cn("bg-background", docs.includes(doc) && "border-primary bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground")}
+                className={cn("bg-card", docs.includes(doc) && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
                 onClick={() => toggleDoc(doc)}>
                 {doc}
               </Button>
             ))}
           </div>
           <div className="flex gap-2">
-            <Input placeholder="다른 서류 추가" className="h-9 bg-background" value={newDoc} maxLength={50}
+            <Input placeholder="다른 서류 추가" className="h-9 bg-card" value={newDoc} maxLength={50}
               onChange={(e) => setNewDoc(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDoc(); } }} />
             <Button type="button" variant="outline" size="lg" onClick={addDoc} aria-label="서류 추가"><Plus /></Button>
@@ -278,7 +278,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           )}
           <ol className="flex flex-col gap-1.5">
             {steps.map((step, i) => (
-              <li key={`${step}-${i}`} className="flex items-center gap-2 rounded-md border border-border bg-background py-1 pr-1 pl-3 text-sm">
+              <li key={`${step}-${i}`} className="flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-1 pl-3 text-sm">
                 <span className="w-4 text-xs text-muted-foreground tabular-nums">{i + 1}</span>
                 <span className="flex-1 truncate">{step}</span>
                 <Button type="button" variant="ghost" size="icon-sm" aria-label={`${step} 위로`} disabled={i === 0} onClick={() => moveStep(i, -1)}><ArrowUp /></Button>
@@ -289,7 +289,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
             ))}
           </ol>
           <div className="flex gap-2">
-            <Input placeholder="단계 추가 (예: 2차 면접)" className="h-9 bg-background" value={newStep} maxLength={50}
+            <Input placeholder="단계 추가 (예: 2차 면접)" className="h-9 bg-card" value={newStep} maxLength={50}
               onChange={(e) => setNewStep(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addStep(); } }} />
             <Button type="button" variant="outline" size="lg" onClick={addStep} aria-label="단계 추가"><Plus /></Button>
@@ -308,7 +308,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         )}
 
         {showSimilar && (
-          <div ref={similarRef} className="flex flex-col gap-2 rounded-lg bg-warning px-3 py-3 text-sm text-warning-foreground" role="alert">
+          <div ref={similarRef} className="flex flex-col gap-2 rounded-xl bg-warning px-3 py-3 text-sm text-warning-foreground" role="alert">
             <p className="font-semibold">비슷한 공고가 있어요</p>
             <p>기업명 · 직무 · 마감일이 같은 공고가 이미 있어요. 다른 공고라면 [그래도 저장]을 눌러 주세요.</p>
             <ul className="flex flex-col gap-1">
@@ -324,7 +324,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         )}
 
         {/* 휴대폰: [저장] 화면 아래 고정 */}
-        <div className="fixed inset-x-0 bottom-0 z-10 flex gap-2 border-t border-border bg-background p-4 md:static md:border-0 md:p-0">
+        <div className="fixed inset-x-0 bottom-0 z-10 flex gap-2 border-t border-border bg-card p-4 md:static md:border-0 md:p-0">
           <Button type="button" variant="outline" size="lg" className="h-11 px-4" asChild>
             <Link href="/app/new">처음부터</Link>
           </Button>
@@ -345,10 +345,10 @@ export function ReviewForm() {
     setDraft(loadDraft());
   }, []);
 
-  if (draft === undefined) return <div className="h-96 animate-pulse rounded-xl bg-muted" aria-label="불러오는 중" />;
+  if (draft === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-muted" aria-label="불러오는 중" />;
   if (draft === null) {
     return (
-      <div className="flex flex-col items-start gap-3 rounded-xl border border-border p-6">
+      <div className="flex flex-col items-start gap-3 rounded-2xl bg-muted p-6">
         <p className="font-semibold">확인할 공고가 없어요</p>
         <p className="text-sm text-muted-foreground">공고 넣기에서 링크나 글을 넣고 정리하면 여기에서 확인할 수 있어요.</p>
         <Button size="lg" className="px-4" asChild>

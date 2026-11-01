@@ -79,10 +79,10 @@ function DueDate({
 export function DueChip({ value, done, today, onClick }: { value: string; done: boolean; today: string; onClick?: () => void }) {
   const days = daysToDate(value, today);
   const className = cn(
-    "shrink-0 rounded-full border border-border px-2 py-0.5 text-xs tabular-nums",
-    onClick && "hover:bg-muted",
-    !done && days <= 1 && "border-destructive/40 bg-destructive/10 text-destructive",
-    done && "text-muted-foreground",
+    "shrink-0 rounded-full bg-due px-2.5 py-0.5 text-xs font-medium text-due-foreground tabular-nums",
+    onClick && "hover:opacity-80",
+    !done && days <= 1 && "bg-destructive-soft text-destructive",
+    done && "bg-secondary text-muted-foreground",
   );
   if (!onClick) return <span className={className}>{formatDueDate(value, today)}</span>;
   return (
@@ -208,14 +208,14 @@ export function PrepTodos({
 
   return (
     <div className="flex flex-col gap-3">
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="flex flex-col gap-2">
         {items.map((item) => {
           const isOpen = open.has(item.id);
           const subDone = item.subtasks.filter((t) => t.done).length;
           return (
-            <li key={item.id} className="flex flex-col gap-2 py-2">
+            <li key={item.id} className="flex flex-col gap-2 rounded-2xl bg-muted px-2 py-2">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-md px-1 py-1 hover:bg-muted">
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl px-1.5 py-1 hover:bg-accent">
                   <input
                     type="checkbox"
                     checked={item.done}
@@ -247,12 +247,12 @@ export function PrepTodos({
               </div>
 
               {isOpen && (
-                <div className="ml-7 flex flex-col gap-2 border-l border-border pl-3">
+                <div className="ml-7 flex flex-col gap-2 border-l border-input pl-3">
                   {item.subtasks.length > 0 && (
                     <ul className="flex flex-col gap-1">
                       {item.subtasks.map((sub) => (
                         <li key={sub.id} className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-md px-1 py-1 hover:bg-muted">
+                          <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-xl px-1.5 py-1 hover:bg-accent">
                             <input
                               type="checkbox"
                               checked={sub.done}

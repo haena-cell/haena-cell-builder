@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DeadlineBadge } from "@/components/postings/posting-card";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { DateBlock, DeadlineBadge } from "@/components/postings/posting-card";
 import { cn } from "@/lib/utils";
 import { kstDateKey, type Posting } from "@/lib/postings";
 
@@ -78,176 +80,177 @@ export function PostingCalendar({ postings, today }: { postings: Posting[]; toda
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3" aria-label="월 달력">
-        <div className="flex items-center justify-between">
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <Card className="gap-4 px-3 md:px-6" aria-label="월 달력">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <h2 className="text-lg font-bold tracking-tight tabular-nums" aria-live="polite">
+            {month.month}월 <span className="text-muted-foreground">{month.year}</span>
+          </h2>
           <div className="flex items-center gap-1">
+            {!isThisMonth && (
+              <Button variant="outline" size="sm" onClick={() => goTo(today)}>
+                오늘
+              </Button>
+            )}
             <Button variant="ghost" size="icon-lg" onClick={() => moveMonth(-1)} aria-label="이전 달">
               <ChevronLeft />
             </Button>
-            <h2 className="min-w-28 text-center text-base font-semibold tabular-nums" aria-live="polite">
-              {month.year}년 {month.month}월
-            </h2>
             <Button variant="ghost" size="icon-lg" onClick={() => moveMonth(1)} aria-label="다음 달">
               <ChevronRight />
             </Button>
           </div>
-          {!isThisMonth && (
-            <Button variant="outline" size="lg" onClick={() => goTo(today)}>
-              오늘
-            </Button>
-          )}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="grid grid-cols-7 border-b border-border bg-muted/50">
-            {WEEKDAYS.map((w, i) => (
-              <div
-                key={w}
+        <div className="grid grid-cols-7 gap-1 md:gap-1.5">
+          {WEEKDAYS.map((w, i) => (
+            <div
+              key={w}
+              className={cn(
+                "rounded-full bg-muted py-1 text-center text-xs font-medium text-muted-foreground",
+                i === 0 && "text-destructive",
+              )}
+            >
+              {w}
+            </div>
+          ))}
+          {cells.map((key, i) => {
+            if (!key) return <div key={`empty-${i}`} />;
+            const items = byDate.get(key) ?? [];
+            const urgent = items.some((p) => isUrgent(p, today));
+            const isSelected = key === selected;
+            const isToday = key === today;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelected(key)}
+                aria-pressed={isSelected}
+                aria-label={`${formatDay(key)}${items.length ? `, 마감 공고 ${items.length}개` : ""}`}
                 className={cn(
-                  "py-2 text-center text-xs font-medium text-muted-foreground",
-                  i === 0 && "text-destructive",
+                  "flex min-h-12 flex-col items-center gap-1 rounded-xl bg-muted p-1 text-left transition-colors hover:bg-accent md:min-h-20 md:items-stretch md:p-1.5",
+                  isToday && !isSelected && "ring-1 ring-foreground",
+                  isSelected && "bg-primary text-primary-foreground hover:bg-primary",
                 )}
               >
-                {w}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {cells.map((key, i) => {
-              const border = cn(i % 7 !== 6 && "border-r", i < cells.length - 7 && "border-b", "border-border");
-              if (!key) return <div key={`empty-${i}`} className={cn("min-h-14 bg-muted/30 md:min-h-24", border)} />;
-              const items = byDate.get(key) ?? [];
-              const urgent = items.some((p) => isUrgent(p, today));
-              const isSelected = key === selected;
-              const isToday = key === today;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSelected(key)}
-                  aria-pressed={isSelected}
-                  aria-label={`${formatDay(key)}${items.length ? `, 마감 공고 ${items.length}개` : ""}`}
+                <span
                   className={cn(
-                    "flex min-h-14 flex-col items-center gap-1 p-1 text-left transition-colors hover:bg-muted md:min-h-24 md:items-stretch md:p-1.5",
-                    border,
-                    isSelected && "bg-muted",
+                    "text-xs tabular-nums md:px-0.5",
+                    i % 7 === 0 && !isSelected && "text-destructive",
+                    (isToday || isSelected) && "font-bold",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex size-6 items-center justify-center rounded-full text-xs tabular-nums",
-                      i % 7 === 0 && "text-destructive",
-                      isToday && "bg-primary font-semibold text-primary-foreground",
-                    )}
-                  >
-                    {Number(key.slice(8))}
-                  </span>
+                  {Number(key.slice(8))}
+                </span>
 
-                  {/* 휴대폰: 점만 / 넓은 화면: 기업명 2개까지 + "+n" */}
-                  {items.length > 0 && (
-                    <>
-                      <span className="flex gap-0.5 md:hidden" aria-hidden>
-                        {items.slice(0, 3).map((p) => (
-                          <span
-                            key={p.id}
-                            className={cn(
-                              "size-1.5 rounded-full",
-                              isUrgent(p, today) ? "bg-destructive" : "bg-foreground/40",
-                            )}
-                          />
-                        ))}
-                      </span>
-                      <span className="hidden flex-col gap-0.5 md:flex" aria-hidden>
-                        {items.slice(0, 2).map((p) => (
-                          <span
-                            key={p.id}
-                            className={cn(
-                              "flex items-center gap-1 truncate text-[11px] leading-4",
-                              isApplied(p) && "text-muted-foreground line-through",
-                            )}
-                          >
-                            {isUrgent(p, today) && <span className="size-1.5 shrink-0 rounded-full bg-destructive" />}
-                            <span className="truncate">{p.company}</span>
-                          </span>
-                        ))}
-                        {items.length > 2 && (
-                          <span className="text-[11px] leading-4 text-muted-foreground">+{items.length - 2}</span>
-                        )}
-                      </span>
-                    </>
-                  )}
-                  {urgent && <span className="sr-only">마감 임박</span>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {postings.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-4 py-10 text-center">
-          <p className="text-sm text-muted-foreground">공고를 저장하면 마감일이 여기에 표시돼요</p>
-          <Button size="lg" asChild>
-            <Link href="/app/new">
-              <Plus data-icon="inline-start" />
-              공고 넣기
-            </Link>
-          </Button>
-        </div>
-      ) : (
-        <>
-          <section className="flex flex-col gap-2">
-            <h2 className="text-[13px] font-semibold text-muted-foreground">{formatDay(selected)} 마감</h2>
-            {selectedPostings.length === 0 ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-4 py-3">
-                <p className="text-sm text-muted-foreground">이날 마감인 공고가 없어요</p>
-                {nextKey && (
-                  <Button variant="outline" size="lg" onClick={() => goTo(nextKey)}>
-                    다음 마감 {formatDay(nextKey)}
-                    <ChevronRight data-icon="inline-end" />
-                  </Button>
+                {/* 휴대폰: 점만 / 넓은 화면: 기업명 2개까지 + "+n" */}
+                {items.length > 0 && (
+                  <>
+                    <span className="flex gap-0.5 md:hidden" aria-hidden>
+                      {items.slice(0, 3).map((p) => (
+                        <span
+                          key={p.id}
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            isUrgent(p, today) ? "bg-destructive" : isSelected ? "bg-primary-foreground" : "bg-foreground/50",
+                          )}
+                        />
+                      ))}
+                    </span>
+                    <span className="hidden flex-col gap-0.5 md:flex" aria-hidden>
+                      {items.slice(0, 2).map((p) => (
+                        <span
+                          key={p.id}
+                          className={cn(
+                            "flex items-center gap-1 truncate text-[11px] leading-4",
+                            isApplied(p) && "line-through opacity-60",
+                          )}
+                        >
+                          {isUrgent(p, today) && <span className="size-1.5 shrink-0 rounded-full bg-destructive" />}
+                          <span className="truncate">{p.company}</span>
+                        </span>
+                      ))}
+                      {items.length > 2 && (
+                        <span className="text-[11px] leading-4 opacity-60">+{items.length - 2}</span>
+                      )}
+                    </span>
+                  </>
                 )}
-              </div>
-            ) : (
-              <PostingRows postings={selectedPostings} today={today} />
-            )}
-          </section>
+                {urgent && <span className="sr-only">마감 임박</span>}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
 
-          {noDate.length > 0 && (
-            <section className="flex flex-col gap-2">
-              <h2 className="text-[13px] font-semibold text-muted-foreground">
-                상시 모집 <span className="tabular-nums">{noDate.length}</span>개
-              </h2>
-              <PostingRows postings={noDate} today={today} />
-            </section>
-          )}
-        </>
-      )}
+      <div className="flex flex-col gap-4">
+        {postings.length === 0 ? (
+          <Card className="items-center px-4 py-10 text-center md:px-6">
+            <p className="text-sm text-muted-foreground">공고를 저장하면 마감일이 여기에 표시돼요</p>
+            <Button size="lg" asChild>
+              <Link href="/app/new">
+                <Plus data-icon="inline-start" />
+                공고 넣기
+              </Link>
+            </Button>
+          </Card>
+        ) : (
+          <>
+            <Card className="gap-3 px-3 md:px-6">
+              <h2 className="px-1 text-lg font-bold tracking-tight">{formatDay(selected)} 마감</h2>
+              {selectedPostings.length === 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-muted px-4 py-3">
+                  <p className="text-sm text-muted-foreground">이날 마감인 공고가 없어요</p>
+                  {nextKey && (
+                    <Button variant="outline" size="sm" onClick={() => goTo(nextKey)}>
+                      다음 마감 {formatDay(nextKey)}
+                      <ChevronRight data-icon="inline-end" />
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <PostingRows postings={selectedPostings} today={today} />
+              )}
+            </Card>
+
+            {noDate.length > 0 && (
+              <Card className="gap-3 px-3 md:px-6">
+                <h2 className="flex items-center gap-2 px-1 text-lg font-bold tracking-tight">
+                  상시 모집
+                  <Badge variant="secondary" className="tabular-nums">{noDate.length}</Badge>
+                </h2>
+                <PostingRows postings={noDate} today={today} />
+              </Card>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
 function PostingRows({ postings, today }: { postings: Posting[]; today: string }) {
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+    <ul className="flex flex-col gap-2">
       {postings.map((posting) => {
         const key = deadlineKey(posting);
         return (
           <li key={posting.id}>
             <Link
               href={`/app/postings/${posting.id}`}
-              className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted"
+              className="flex items-center gap-3 rounded-2xl border border-border p-3 transition-colors hover:bg-muted"
             >
-              <div className="min-w-0">
+              <div className="flex w-12 shrink-0 flex-col items-center border-r border-border pr-3">
+                <DateBlock posting={posting} />
+              </div>
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{posting.company}</p>
                 <p className="truncate text-xs text-muted-foreground">{posting.jobTitle}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
+                  <DeadlineBadge posting={posting} daysLeft={key ? daysBetween(today, key) : null} />
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {posting.isSample && <span className="text-[11px] text-warning-foreground">연습용 예시</span>}
-                <DeadlineBadge posting={posting} daysLeft={key ? daysBetween(today, key) : null} />
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Link>
           </li>
         );

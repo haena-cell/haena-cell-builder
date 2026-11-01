@@ -14,8 +14,8 @@ export function StepBar({ steps, current }: { steps: PostingStep[]; current: num
               className={cn(
                 "h-1.5 rounded-full",
                 done && "bg-primary",
-                isCurrent && "bg-background ring-1 ring-primary",
-                !done && !isCurrent && "bg-muted",
+                isCurrent && "bg-card ring-1 ring-primary",
+                !done && !isCurrent && "bg-input",
               )}
             />
             <span

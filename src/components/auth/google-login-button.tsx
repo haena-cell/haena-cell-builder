@@ -40,7 +40,7 @@ export function GoogleLoginButton() {
   return (
     <div className="flex w-full flex-col gap-3">
       {failed && (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="rounded-xl bg-destructive-soft px-3 py-2 text-sm text-destructive">
           로그인하지 못했어요. 다시 시도해 주세요
         </p>
       )}

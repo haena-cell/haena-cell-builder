@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { DueChip } from "@/components/postings/prep-todos";
 import { setPrepDone, updateSubtask } from "@/lib/posting-actions";
@@ -146,7 +147,7 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex rounded-lg bg-muted p-0.5" role="radiogroup" aria-label="정렬">
+        <div className="flex rounded-full bg-card p-1" role="radiogroup" aria-label="정렬">
           {(
             [
               { value: "posting", label: "마감 임박 공고 순" },
@@ -160,39 +161,39 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
               aria-checked={sort === o.value}
               onClick={() => changeSort(o.value)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors",
-                sort === o.value && "bg-background font-semibold text-foreground shadow-sm",
+                "rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors",
+                sort === o.value && "bg-primary font-semibold text-primary-foreground shadow-soft",
               )}
             >
               {o.label}
             </button>
           ))}
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+        <label className="flex cursor-pointer items-center gap-2 px-1 text-sm text-muted-foreground">
           <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} className="size-4 accent-primary" />
           완료한 일 보기
         </label>
       </div>
 
       {empty ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border px-4 py-10 text-center">
+        <Card className="items-center px-4 py-10 text-center md:px-6">
           <p className="text-sm text-muted-foreground">
             {total === 0 ? "공고 상세의 준비 항목에서 할 일을 추가해 보세요" : "남은 할 일이 없어요"}
           </p>
           <Button variant="outline" size="lg" asChild>
             <Link href="/app">공고 목록으로</Link>
           </Button>
-        </div>
+        </Card>
       ) : sort === "posting" ? (
         <div className="flex flex-col gap-4">
           {groups.map(({ posting, rows }) => (
-            <section key={posting.id} className="overflow-hidden rounded-xl border border-border">
+            <Card key={posting.id} className="gap-3 px-3 md:px-6" aria-label={posting.company}>
               <Link
                 href={`/app/postings/${posting.id}`}
-                className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-2.5 hover:bg-muted"
+                className="flex items-center justify-between gap-3 rounded-2xl px-1 hover:opacity-70"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{posting.company}</p>
+                  <p className="truncate text-lg font-bold tracking-tight">{posting.company}</p>
                   <p className="truncate text-xs text-muted-foreground">{posting.jobTitle}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
@@ -200,7 +201,7 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </div>
               </Link>
-              <ul className="flex flex-col px-4 py-2">
+              <ul className="flex flex-col rounded-2xl bg-muted px-3 py-2">
                 {rows.map((row) => (
                   <li key={row.key} className={cn("flex items-center gap-2.5 py-1.5", row.kind === "sub" && "ml-6")}>
                     <Check row={row} onToggle={toggle} />
@@ -211,29 +212,31 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
                   </li>
                 ))}
               </ul>
-            </section>
+            </Card>
           ))}
         </div>
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-xl border border-border px-4">
-          {flat.map((row) => (
-            <li key={row.key} className="flex items-center gap-2.5 py-2.5">
-              <Check row={row} onToggle={toggle} />
-              <div className="min-w-0 flex-1">
-                <p className={cn("text-sm", row.done && "text-muted-foreground line-through")}>{row.label}</p>
-                <Link href={`/app/postings/${row.posting.id}`} className="block truncate text-xs text-muted-foreground hover:underline">
-                  {row.posting.company}
-                  {row.parentLabel && ` · ${row.parentLabel}`}
-                </Link>
-              </div>
-              {row.dueDate ? (
-                <DueChip value={row.dueDate} done={row.done} today={today} />
-              ) : (
-                <span className="shrink-0 text-xs text-muted-foreground">날짜 없음</span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <Card className="px-3 py-2 md:px-6 md:py-3">
+          <ul className="flex flex-col divide-y divide-border">
+            {flat.map((row) => (
+              <li key={row.key} className="flex items-center gap-2.5 py-2.5">
+                <Check row={row} onToggle={toggle} />
+                <div className="min-w-0 flex-1">
+                  <p className={cn("text-sm", row.done && "text-muted-foreground line-through")}>{row.label}</p>
+                  <Link href={`/app/postings/${row.posting.id}`} className="block truncate text-xs text-muted-foreground hover:underline">
+                    {row.posting.company}
+                    {row.parentLabel && ` · ${row.parentLabel}`}
+                  </Link>
+                </div>
+                {row.dueDate ? (
+                  <DueChip value={row.dueDate} done={row.done} today={today} />
+                ) : (
+                  <span className="shrink-0 text-xs text-muted-foreground">날짜 없음</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   );

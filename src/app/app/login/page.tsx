@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-full flex-1 items-center justify-center bg-background px-4 py-16">
-      <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
+    <main className="flex min-h-full flex-1 items-center justify-center bg-background px-3 py-16">
+      <Card className="w-full max-w-sm items-center gap-8 px-6 py-10 text-center md:px-8 md:py-12">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight">이름 미정</h1>
           <p className="text-sm text-muted-foreground">채용공고 링크만 붙여넣으면 마감일과 전형 단계를 정리해 드려요.</p>
@@ -19,7 +20,7 @@ export default function LoginPage() {
           <GoogleLoginButton />
         </Suspense>
         <p className="text-xs text-muted-foreground">연습용 서비스예요 · 가짜 공고로 먼저 써 보세요</p>
-      </div>
+      </Card>
     </main>
   );
 }

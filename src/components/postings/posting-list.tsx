@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { PostingCard } from "@/components/postings/posting-card";
 import { currentStepIndex, daysLeftFor, withCurrentStep, type Posting } from "@/lib/postings";
 import { setCurrentStep, setStepCompleted as setStepCompletedAction } from "@/lib/posting-actions";
@@ -116,49 +118,45 @@ export function PostingList({
     : daysLeft;
   const { sections, past } = groupPostings(postings, allDaysLeft);
 
+  const card = (posting: Posting) => (
+    <PostingCard
+      key={posting.id}
+      posting={posting}
+      daysLeft={allDaysLeft[posting.id] ?? null}
+      highlight={posting.id === highlightId}
+      onComplete={handleComplete}
+      onBack={handleBack}
+    />
+  );
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4">
       {sections.map((section) => (
-        <section key={section.title} className="flex flex-col gap-3">
-          <h2 className="text-[13px] font-semibold text-muted-foreground">
-            {section.title} <span className="tabular-nums">{section.postings.length}</span>
+        <Card key={section.title} className="px-3 md:px-6" aria-label={section.title}>
+          <h2 className="flex items-center gap-2 px-1 text-lg font-bold tracking-tight">
+            {section.title}
+            <Badge variant={section.title === "마감 임박" ? "destructive" : "secondary"} className="tabular-nums">
+              {section.postings.length}
+            </Badge>
           </h2>
-          {section.postings.map((posting) => (
-            <PostingCard
-              key={posting.id}
-              posting={posting}
-              daysLeft={allDaysLeft[posting.id] ?? null}
-              highlight={posting.id === highlightId}
-              onComplete={handleComplete}
-              onBack={handleBack}
-            />
-          ))}
-        </section>
+          <div className="grid gap-3 xl:grid-cols-2">{section.postings.map(card)}</div>
+        </Card>
       ))}
 
       {past.length > 0 && (
-        <section className="flex flex-col gap-3">
+        <Card className="px-3 md:px-6">
           <button
             type="button"
             onClick={() => setShowPast((v) => !v)}
-            className="flex items-center gap-1 self-start text-[13px] font-semibold text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-2 self-start px-1 text-lg font-bold tracking-tight text-muted-foreground hover:text-foreground"
             aria-expanded={showPast}
           >
+            지난 공고
+            <Badge variant="secondary" className="tabular-nums">{past.length}</Badge>
             <ChevronDown className={showPast ? "size-4 rotate-180 transition-transform" : "size-4 transition-transform"} />
-            지난 공고 <span className="tabular-nums">{past.length}</span>
           </button>
-          {showPast &&
-            past.map((posting) => (
-              <PostingCard
-                key={posting.id}
-                posting={posting}
-                daysLeft={allDaysLeft[posting.id] ?? null}
-                highlight={posting.id === highlightId}
-                onComplete={handleComplete}
-              onBack={handleBack}
-              />
-            ))}
-        </section>
+          {showPast && <div className="grid gap-3 xl:grid-cols-2">{past.map(card)}</div>}
+        </Card>
       )}
     </div>
   );

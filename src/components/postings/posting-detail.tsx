@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { Card } from "@/components/ui/card";
+import { PageTitle } from "@/components/postings/page-title";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { PrepTodos } from "@/components/postings/prep-todos";
 import { StepBar } from "@/components/postings/step-bar";
@@ -47,13 +48,13 @@ function kstParts(iso: string | null, timeKnown: boolean) {
 
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-3">
+    <Card className="gap-4 px-4 md:px-6" aria-label={title}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[13px] font-semibold text-muted-foreground">{title}</h2>
+        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
         {aside}
       </div>
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -92,7 +93,8 @@ function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p:
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4 rounded-xl border border-border p-4">
+    <Card className="px-4 md:px-6">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="edit-company">기업명</Label>
@@ -141,6 +143,7 @@ function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p:
         <Button type="button" variant="outline" size="lg" className="px-4" onClick={onCancel}>취소</Button>
       </div>
     </form>
+    </Card>
   );
 }
 
@@ -224,16 +227,14 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
   const googleUrl = googleCalendarUrl(posting);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4">
       {/* 머리 */}
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {posting.isSample && <Badge className="bg-warning text-warning-foreground">연습용 예시</Badge>}
+      <PageTitle title={posting.company} description={posting.jobTitle} back={{ href: "/app", label: "목록" }}>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
           <DeadlineBadge posting={posting} daysLeft={daysLeftFor(posting, now)} />
         </div>
-        <h1 className="text-xl font-bold tracking-tight md:text-2xl">{posting.company}</h1>
-        <p className="text-sm text-muted-foreground">{posting.jobTitle}</p>
-      </div>
+      </PageTitle>
 
       {editing ? (
         <EditForm
@@ -249,147 +250,148 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
           }}
         />
       ) : (
-        <>
-          {/* 전형 단계 */}
-          <Section title="전형 단계">
-            <StepBar steps={posting.steps} current={current} />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm">
-                지금: <span className="font-semibold">{step ? step.name : "전형 끝"}</span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {doneSteps > 0 && (
-                  <Button variant="ghost" size="lg" className="px-3" onClick={() => moveToStep(doneSteps - 1)}>
-                    <Undo2 data-icon="inline-start" />
-                    이전 단계로
-                  </Button>
-                )}
-                {step && (
-                  <Button variant="outline" size="lg" className="px-3" onClick={() => completeStep(current)}>
-                    <Check data-icon="inline-start" />
-                    {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
-                  </Button>
-                )}
-              </div>
-            </div>
-            {choosingStep ? (
-              <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-                <p className="text-xs text-muted-foreground">지금 어느 단계인가요? 앞 단계는 끝낸 것으로 표시돼요.</p>
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="지금 단계">
-                  {[...posting.steps.map((s) => s.name), "전형 끝"].map((name, i) => (
-                    <Button
-                      key={`${name}-${i}`}
-                      variant="outline"
-                      size="sm"
-                      role="radio"
-                      aria-checked={doneSteps === i}
-                      className={cn(doneSteps === i && "border-primary bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground")}
-                      onClick={() => (doneSteps === i ? setChoosingStep(false) : moveToStep(i))}
-                    >
-                      {name}
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-4">
+            {/* 전형 단계 */}
+            <Section title="전형 단계">
+              <StepBar steps={posting.steps} current={current} />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm">
+                  지금: <span className="font-semibold">{step ? step.name : "전형 끝"}</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {doneSteps > 0 && (
+                    <Button variant="ghost" size="lg" className="px-3" onClick={() => moveToStep(doneSteps - 1)}>
+                      <Undo2 data-icon="inline-start" />
+                      이전 단계로
                     </Button>
-                  ))}
+                  )}
+                  {step && (
+                    <Button variant="outline" size="lg" className="px-3" onClick={() => completeStep(current)}>
+                      <Check data-icon="inline-start" />
+                      {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
+                    </Button>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" className="self-start" onClick={() => setChoosingStep(false)}>
-                  닫기
-                </Button>
               </div>
-            ) : (
-              <button
-                type="button"
-                className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                onClick={() => setChoosingStep(true)}
-              >
-                단계 직접 고르기
-              </button>
-            )}
-          </Section>
-          <Separator />
-
-          {/* 마감 */}
-          <Section title="마감">
-            <p className="text-base font-semibold tabular-nums">{formatDeadline(posting)}</p>
-            {canAddToCalendar(posting) ? (
-              <div className="flex flex-wrap gap-2">
-                {googleUrl && (
-                  <Button variant="outline" size="lg" className="px-3" asChild>
-                    <a href={googleUrl} target="_blank" rel="noreferrer">
-                      <CalendarPlus data-icon="inline-start" />
-                      구글 캘린더에 추가
-                    </a>
+              {choosingStep ? (
+                <div className="flex flex-col gap-2 rounded-2xl bg-muted p-3">
+                  <p className="text-xs text-muted-foreground">지금 어느 단계인가요? 앞 단계는 끝낸 것으로 표시돼요.</p>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="지금 단계">
+                    {[...posting.steps.map((s) => s.name), "전형 끝"].map((name, i) => (
+                      <Button
+                        key={`${name}-${i}`}
+                        variant="outline"
+                        size="sm"
+                        role="radio"
+                        aria-checked={doneSteps === i}
+                        className={cn(doneSteps === i && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
+                        onClick={() => (doneSteps === i ? setChoosingStep(false) : moveToStep(i))}
+                      >
+                        {name}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button variant="ghost" size="sm" className="self-start" onClick={() => setChoosingStep(false)}>
+                    닫기
                   </Button>
-                )}
-                <Button variant="outline" size="lg" className="px-3" onClick={downloadIcs}>
-                  <Download data-icon="inline-start" />
-                  캘린더 파일 받기 (맥·아이폰)
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">마감 날짜가 없어서 캘린더에 넣을 수 없어요.</p>
-            )}
-          </Section>
-          <Separator />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  onClick={() => setChoosingStep(true)}
+                >
+                  단계 직접 고르기
+                </button>
+              )}
+            </Section>
 
-          {/* 준비 항목 */}
-          <Section
-            title="준비 항목"
-            aside={<span className="text-xs text-muted-foreground tabular-nums">{doneCount}/{posting.prepItems.length}</span>}
-          >
-            <PrepTodos
-              postingId={posting.id}
-              items={posting.prepItems}
-              today={kstDateKey(now)}
-              onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
-            />
-          </Section>
-          <Separator />
+            {/* 마감 */}
+            <Section title="마감">
+              <p className="text-base font-semibold tabular-nums">{formatDeadline(posting)}</p>
+              {canAddToCalendar(posting) ? (
+                <div className="flex flex-wrap gap-2">
+                  {googleUrl && (
+                    <Button variant="outline" size="lg" className="px-3" asChild>
+                      <a href={googleUrl} target="_blank" rel="noreferrer">
+                        <CalendarPlus data-icon="inline-start" />
+                        구글 캘린더에 추가
+                      </a>
+                    </Button>
+                  )}
+                  <Button variant="outline" size="lg" className="px-3" onClick={downloadIcs}>
+                    <Download data-icon="inline-start" />
+                    캘린더 파일 받기 (맥·아이폰)
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">마감 날짜가 없어서 캘린더에 넣을 수 없어요.</p>
+              )}
+            </Section>
 
-          {/* 공고 정보 */}
-          <Section title="공고 정보">
-            <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-2.5 text-sm">
-              <dt className="text-muted-foreground">근무지</dt>
-              <dd>{posting.location ?? "—"}</dd>
-              <dt className="text-muted-foreground">근무 형태</dt>
-              <dd>{posting.employmentType ?? "—"}</dd>
-              <dt className="text-muted-foreground">기업 규모</dt>
-              <dd>{posting.companySize ?? "—"}</dd>
-              <dt className="text-muted-foreground">제출 서류</dt>
-              <dd>{posting.requiredDocs.join(", ") || "—"}</dd>
-              <dt className="text-muted-foreground">원본</dt>
-              <dd className="min-w-0">
-                {posting.sourceUrl ? (
-                  <a href={posting.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 underline underline-offset-2">
-                    <span className="truncate">{posting.sourceUrl}</span>
-                    <ExternalLink className="size-3.5 shrink-0" />
-                  </a>
-                ) : (
-                  "—"
-                )}
-              </dd>
-            </dl>
-          </Section>
-          <Separator />
-
-          {/* 수정 · 삭제 */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="lg" className="px-3" onClick={() => setEditing(true)}>
-              <Pencil data-icon="inline-start" />
-              수정
-            </Button>
-            {confirmDelete ? (
-              <div className="flex items-center gap-2" role="alert">
-                <span className="text-sm">정말 지울까요?</span>
-                <Button variant="destructive" size="lg" className="px-3" onClick={remove} disabled={deleting}>{deleting ? "지우는 중…" : "지우기"}</Button>
-                <Button variant="ghost" size="lg" className="px-3" onClick={() => setConfirmDelete(false)}>취소</Button>
-              </div>
-            ) : (
-              <Button variant="destructive" size="lg" className="px-3" onClick={() => setConfirmDelete(true)}>
-                <Trash2 data-icon="inline-start" />
-                삭제
-              </Button>
-            )}
+            {/* 공고 정보 */}
+            <Section title="공고 정보">
+              <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-2.5 text-sm">
+                <dt className="text-muted-foreground">근무지</dt>
+                <dd>{posting.location ?? "—"}</dd>
+                <dt className="text-muted-foreground">근무 형태</dt>
+                <dd>{posting.employmentType ?? "—"}</dd>
+                <dt className="text-muted-foreground">기업 규모</dt>
+                <dd>{posting.companySize ?? "—"}</dd>
+                <dt className="text-muted-foreground">제출 서류</dt>
+                <dd>{posting.requiredDocs.join(", ") || "—"}</dd>
+                <dt className="text-muted-foreground">원본</dt>
+                <dd className="min-w-0">
+                  {posting.sourceUrl ? (
+                    <a href={posting.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 underline underline-offset-2">
+                      <span className="truncate">{posting.sourceUrl}</span>
+                      <ExternalLink className="size-3.5 shrink-0" />
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </dd>
+              </dl>
+            </Section>
           </div>
-        </>
+
+          <div className="flex min-w-0 flex-col gap-4">
+            {/* 준비 항목 */}
+            <Section
+              title="준비 항목"
+              aside={<span className="text-xs text-muted-foreground tabular-nums">{doneCount}/{posting.prepItems.length}</span>}
+            >
+              <PrepTodos
+                postingId={posting.id}
+                items={posting.prepItems}
+                today={kstDateKey(now)}
+                onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
+              />
+            </Section>
+
+
+            {/* 수정 · 삭제 */}
+            <div className="flex flex-wrap items-center gap-2 px-1">
+              <Button variant="outline" size="lg" className="px-3" onClick={() => setEditing(true)}>
+                <Pencil data-icon="inline-start" />
+                수정
+              </Button>
+              {confirmDelete ? (
+                <div className="flex items-center gap-2" role="alert">
+                  <span className="text-sm">정말 지울까요?</span>
+                  <Button variant="destructive" size="lg" className="px-3" onClick={remove} disabled={deleting}>{deleting ? "지우는 중…" : "지우기"}</Button>
+                  <Button variant="ghost" size="lg" className="px-3" onClick={() => setConfirmDelete(false)}>취소</Button>
+                </div>
+              ) : (
+                <Button variant="destructive" size="lg" className="px-3" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 data-icon="inline-start" />
+                  삭제
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

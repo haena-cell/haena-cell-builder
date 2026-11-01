@@ -155,7 +155,7 @@ export function NewPostingForm() {
       </form>
 
       {fallbackMessage && (
-        <div className="flex gap-2 rounded-lg bg-warning px-3 py-2.5 text-sm text-warning-foreground" role="status">
+        <div className="flex gap-2 rounded-xl bg-warning px-3 py-2.5 text-sm text-warning-foreground" role="status">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <p>
             {fallbackMessage} 공고 글을 붙여넣거나 캡처를 올려 주세요.
@@ -215,7 +215,7 @@ export function NewPostingForm() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="overflow-hidden rounded-lg border border-border"
+                  className="overflow-hidden rounded-xl border border-border"
                   disabled={loading}
                 >
                   {/* 기기 안에서만 보여 주는 미리보기 */}
@@ -226,7 +226,7 @@ export function NewPostingForm() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="flex h-40 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input text-sm text-muted-foreground hover:bg-muted"
+                  className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-input text-sm text-muted-foreground hover:bg-muted"
                   disabled={loading}
                 >
                   <ImageUp className="size-5" />
@@ -262,14 +262,14 @@ export function NewPostingForm() {
         </p>
       )}
       {saved && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-warning px-3 py-3" role="alert">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-warning px-3 py-3" role="alert">
           <div className="min-w-0 text-sm text-warning-foreground">
             <p className="font-semibold">이미 저장한 공고예요</p>
             <p className="truncate">
               {saved.company} · {saved.jobTitle}
             </p>
           </div>
-          <Button variant="outline" size="lg" className="bg-background px-3" asChild>
+          <Button variant="outline" size="lg" className="bg-card px-3" asChild>
             <Link href={`/app/postings/${saved.id}`}>그 공고 보기</Link>
           </Button>
         </div>

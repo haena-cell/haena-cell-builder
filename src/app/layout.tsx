@@ -23,7 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
-        <Toaster theme="light" />
+        <Toaster theme="light" mobileOffset={{ bottom: 88 }} />
       </body>
     </html>
   );
