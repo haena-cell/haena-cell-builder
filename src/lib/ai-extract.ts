@@ -49,8 +49,10 @@ export type AiSource = {
 let client: Anthropic | null = null;
 
 export async function aiExtract(source: AiSource): Promise<AiPosting | null> {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
-  client ??= new Anthropic();
+  // 환경변수에 붙여넣을 때 섞인 줄바꿈·공백·따옴표는 지운다 (헤더에 들어가면 요청이 깨진다)
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim().replace(/^["']|["']$/g, "");
+  if (!apiKey) return null;
+  client ??= new Anthropic({ apiKey });
 
   const content: Anthropic.Beta.BetaContentBlockParam[] = [];
   if (source.imageDataUrl) {
