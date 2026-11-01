@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import type { ExtractedPosting } from "@/lib/extract-posting";
+import { htmlToLines, readKeywordFields } from "@/lib/posting-keywords";
 
 // 링크로 공고 읽기 (T-15, D-23·D-24). AI 없이 페이지 안의 정리된 채용 정보(JobPosting)·설명 한 줄을 읽는다.
 // 원칙(D-24): 사용자가 [정리하기]를 누를 때 그 페이지 하나만 한 번 가져오고, 공고 전문은 저장하지 않는다.
@@ -10,7 +11,7 @@ const MAX_BYTES = 3_000_000;
 const MAX_REDIRECTS = 3;
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
-const DEFAULT_STEPS = ["서류 제출", "면접", "최종 결과"];
+const DEFAULT_STEPS: string[] = ["서류 제출", "면접", "최종 결과"];
 
 export type LinkReadResult =
   | { status: "ok"; posting: ExtractedPosting }
@@ -195,7 +196,9 @@ function tidyTitle(title: string, company: string) {
     .trim();
 }
 
-function fromJobPosting(job: Record<string, unknown>, html: string): ExtractedPosting {
+type Draft = { posting: ExtractedPosting; deadlineUnsure: boolean };
+
+function fromJobPosting(job: Record<string, unknown>, html: string): Draft {
   const company = clean((job.hiringOrganization as { name?: unknown } | undefined)?.name);
   const deadline =
     (typeof job.validThrough === "string" ? deadlineFrom(job.validThrough) : null) ?? deadlineFromText(html);
@@ -214,11 +217,11 @@ function fromJobPosting(job: Record<string, unknown>, html: string): ExtractedPo
   };
   // 정리 정보에 마감일이 없어 글에서 찾았거나, 자정 마감(사이트마다 뜻이 달라서)이면 확인받는다
   const midnight = typeof job.validThrough === "string" && /T00:00(:00)?/.test(job.validThrough);
-  return withUnsure(posting, deadline === null || typeof job.validThrough !== "string" || midnight);
+  return { posting, deadlineUnsure: deadline === null || typeof job.validThrough !== "string" || midnight };
 }
 
 // 사람인처럼 정리 정보가 없고 설명 한 줄에 "기업, 제목, 경력:…, 마감일:2026-11-02" 가 있는 페이지
-function fromDescription(html: string): ExtractedPosting | null {
+function fromDescription(html: string): Draft | null {
   const desc = metaContent(html, "og:description") || metaContent(html, "description");
   const title = metaContent(html, "og:title") || clean(/<title>([\s\S]*?)<\/title>/i.exec(html)?.[1]);
   if (!title) return null;
@@ -248,17 +251,47 @@ function fromDescription(html: string): ExtractedPosting | null {
     steps: DEFAULT_STEPS,
     unsure: [],
   };
-  return withUnsure(posting, deadline === null || !due);
+  return { posting, deadlineUnsure: deadline === null || !due };
 }
 
-// 비었거나 자신 없는 칸은 확인 화면에서 노랑으로. 제출 서류·전형 절차는 페이지에서 읽지 않으므로 항상 확인
-function withUnsure(p: ExtractedPosting, deadlineUnsure: boolean): ExtractedPosting {
-  const unsure = ["requiredDocs", "steps"];
+// 공고 본문 글: 정리 정보 안의 본문(description) → 사람인은 같은 공고의 본문 페이지 → 없으면 페이지 전체
+async function bodyLines(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
+  if (job && typeof job.description === "string" && job.description.length > 50) return htmlToLines(job.description);
+  const recIdx = pageUrl.hostname.endsWith("saramin.co.kr") ? pageUrl.searchParams.get("rec_idx") : null;
+  if (recIdx && /^\d+$/.test(recIdx)) {
+    const detail = await fetchPage(`https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=${recIdx}`).catch(() => null);
+    if (detail) return htmlToLines(detail.html);
+  }
+  return htmlToLines(html);
+}
+
+// 본문의 "항목 : 값" 줄로 빈 칸 채우기. 정리 정보에 있는 값이 먼저다
+function fillFromKeywords({ posting, deadlineUnsure }: Draft, text: string): Draft {
+  const kw = readKeywordFields(text);
+  const next = { ...posting };
+  next.employmentType ||= kw.employmentType;
+  if (kw.location && (!next.location || kw.location.length > next.location.length)) next.location = kw.location;
+  if (kw.steps.length >= 2) next.steps = kw.steps;
+  if (kw.requiredDocs.length) next.requiredDocs = kw.requiredDocs;
+  let unsureDeadline = deadlineUnsure;
+  if (!next.deadlineKind && kw.deadlineDate) {
+    const d = deadlineFrom(kw.deadlineDate);
+    if (d) Object.assign(next, d);
+    unsureDeadline = true;
+  }
+  return { posting: next, deadlineUnsure: unsureDeadline };
+}
+
+// 비었거나 자신 없는 칸은 확인 화면에서 노랑으로
+function withUnsure({ posting: p, deadlineUnsure }: Draft): ExtractedPosting {
+  const unsure: string[] = [];
   if (!p.company) unsure.push("company");
   if (!p.jobTitle) unsure.push("jobTitle");
   if (deadlineUnsure || !p.deadlineKind) unsure.push("deadline");
   if (!p.location) unsure.push("location");
   if (!p.employmentType) unsure.push("employmentType");
+  if (p.requiredDocs.length === 0) unsure.push("requiredDocs");
+  if (p.steps === DEFAULT_STEPS) unsure.push("steps"); // 본문에서 못 찾아 기본 단계를 넣은 경우
   return { ...p, unsure };
 }
 
@@ -272,8 +305,9 @@ export async function readPostingLink(url: string): Promise<LinkReadResult> {
   if (!page) return { status: "unreadable", message: UNREADABLE };
 
   const job = findJobPosting(page.html);
-  const posting = job ? fromJobPosting(job, page.html) : fromDescription(page.html);
+  const draft = job ? fromJobPosting(job, page.html) : fromDescription(page.html);
   // 기업명도 직무도 못 찾았으면 읽은 것으로 보지 않는다
-  if (!posting || (!posting.company && !posting.jobTitle)) return { status: "unreadable", message: UNREADABLE };
-  return { status: "ok", posting };
+  if (!draft || (!draft.posting.company && !draft.posting.jobTitle)) return { status: "unreadable", message: UNREADABLE };
+  const filled = fillFromKeywords(draft, await bodyLines(page.html, job, page.finalUrl));
+  return { status: "ok", posting: withUnsure(filled) };
 }
