@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles, X } from "lucide-react";
@@ -28,6 +28,9 @@ async function resizeImage(file: File, maxSide = 1600) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
+const INCOMING_KEY = "pacemate:incoming";
+const INCOMING_EVENT = "pacemate:incoming";
+
 export function NewPostingForm() {
   const [mode, setMode] = useState<Mode>("link");
   const [url, setUrl] = useState("");
@@ -39,6 +42,9 @@ export function NewPostingForm() {
   const [saved, setSaved] = useState<PostingSummary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // 글·캡처로 넣을 때 링크 칸에 남아 있는 링크 (함께 저장)
+  const linkToKeep = /^https?:\/\/\S+$/i.test(url.trim()) ? url.trim() : "";
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -55,9 +61,11 @@ export function NewPostingForm() {
     }
   }
 
-  async function submit(from: Mode) {
-    const input: ExtractInput | null =
-      from === "link"
+  // incoming: 크롬 확장 프로그램이 보낸 공고 화면 (D-33). 화면 글·캡처로 정리하고, 저장에는 링크만 남긴다
+  async function submit(from: Mode, incoming?: { input: ExtractInput; url: string }) {
+    const input: ExtractInput | null = incoming
+      ? incoming.input
+      : from === "link"
         ? { kind: "link", url }
         : from === "text"
           ? { kind: "text", text }
@@ -75,8 +83,9 @@ export function NewPostingForm() {
     setSaved(null);
     try {
       // 이미 저장한 링크면 정리하지 않고 알려 준다 (T-08)
-      if (input.kind === "link") {
-        const existing = await findSavedByLink(input.url);
+      const checkUrl = incoming ? incoming.url : input.kind === "link" ? input.url : null;
+      if (checkUrl) {
+        const existing = await findSavedByLink(checkUrl);
         if (existing) {
           setSaved(existing);
           return;
@@ -96,8 +105,9 @@ export function NewPostingForm() {
       } else if (data.status === "ok") {
         // 링크로 못 읽어 글·캡처로 넣을 때도 그 링크는 함께 저장한다 (나중에 원래 공고로 가 보기, D-31)
         const link = linkToKeep || undefined;
-        const source: DraftSource =
-          input.kind === "link"
+        const source: DraftSource = incoming
+          ? { kind: "link", url: incoming.url, viaExtension: true }
+          : input.kind === "link"
             ? { kind: "link", url: input.url }
             : input.kind === "image"
               ? { kind: "image", previewDataUrl: input.dataUrl, url: link }
@@ -122,9 +132,46 @@ export function NewPostingForm() {
     }
   }
 
+  // 크롬 확장 프로그램이 이 탭에 건넨 공고 (sessionStorage + 'pacemate:incoming' 신호, D-33)
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+  useEffect(() => {
+    function consume() {
+      let raw: string | null = null;
+      try {
+        raw = sessionStorage.getItem(INCOMING_KEY);
+        sessionStorage.removeItem(INCOMING_KEY);
+      } catch {
+        return;
+      }
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw) as { url?: unknown; text?: unknown; image?: unknown };
+        const pageUrl = typeof data.url === "string" && /^https?:\/\//.test(data.url) ? data.url : "";
+        const pageText = typeof data.text === "string" ? data.text.trim().slice(0, 20_000) : "";
+        const shot = typeof data.image === "string" && data.image.startsWith("data:image/") ? data.image : null;
+        if (!pageUrl) return;
+        setUrl(pageUrl);
+        // 글이 충분하면 글로, 거의 없으면(이미지 공고) 화면 캡처로 정리
+        if (pageText.length >= 300 || !shot) {
+          setText(pageText);
+          submitRef.current("text", { input: { kind: "text", text: pageText.padEnd(20, " ") }, url: pageUrl });
+        } else {
+          setImage(shot);
+          submitRef.current("image", { input: { kind: "image", dataUrl: shot }, url: pageUrl });
+        }
+      } catch {
+        setError("확장 프로그램에서 받은 공고를 읽지 못했어요. 다시 시도해 주세요.");
+      }
+    }
+    consume();
+    window.addEventListener(INCOMING_EVENT, consume);
+    return () => window.removeEventListener(INCOMING_EVENT, consume);
+  }, []);
+
   const canSubmit = mode === "link" ? !!url.trim() : mode === "text" ? !!text.trim() : !!image;
-  // 글·캡처로 넣을 때 링크 칸에 남아 있는 링크 (함께 저장)
-  const linkToKeep = /^https?:\/\/\S+$/i.test(url.trim()) ? url.trim() : "";
 
   return (
     <div className="flex flex-col gap-5">

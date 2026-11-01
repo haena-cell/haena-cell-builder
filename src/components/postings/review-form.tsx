@@ -204,7 +204,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
       {/* 머리: 무엇을 정리했는지 한눈에 */}
       <Card className="gap-4 px-4 md:px-6">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="secondary">{SOURCE_LABEL[draft.source.kind]}에서 정리</Badge>
+          <Badge variant="secondary">{draft.source.kind === "link" && draft.source.viaExtension ? "확장 프로그램" : SOURCE_LABEL[draft.source.kind]}에서 정리</Badge>
           {unsureCount > 0 ? (
             <Badge variant="warning">확인할 칸 {unsureCount}개</Badge>
           ) : (

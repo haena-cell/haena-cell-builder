@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "pacemate — 공고 담기",
+  "version": "0.1.0",
+  "description": "보고 있는 채용 공고 화면을 pacemate로 보내 마감일·전형 절차를 정리해요.",
+  "action": {
+    "default_title": "이 공고를 pacemate에 담기",
+    "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://haena-cell-builder.vercel.app/*", "http://localhost:3000/*"],
+  "background": { "service_worker": "background.js" }
+}
