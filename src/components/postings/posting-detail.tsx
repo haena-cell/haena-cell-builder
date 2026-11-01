@@ -216,7 +216,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
       return toast.error(result.message);
     }
     toast(`${posting.company} 공고를 지웠어요`);
-    router.push("/app");
+    router.push("/app/postings");
   }
 
   const current = currentStepIndex(posting.steps);
@@ -229,7 +229,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
   return (
     <div className="flex flex-col gap-4">
       {/* 머리 */}
-      <PageTitle title={posting.company} description={posting.jobTitle} back={{ href: "/app", label: "목록" }}>
+      <PageTitle title={posting.company} description={posting.jobTitle} back={{ href: "/app/postings", label: "목록" }}>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
           <DeadlineBadge posting={posting} daysLeft={daysLeftFor(posting, now)} />

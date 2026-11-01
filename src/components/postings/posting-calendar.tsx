@@ -12,20 +12,20 @@ import { kstDateKey, type Posting } from "@/lib/postings";
 
 // 날짜 칸 하나는 한국 시간 날짜 문자열(YYYY-MM-DD)로 다룬다.
 const DAY_MS = 24 * 60 * 60 * 1000;
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const toKey = (year: number, month: number, day: number) => `${year}-${pad(month)}-${pad(day)}`;
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
 
-function deadlineKey(posting: Posting) {
+export function deadlineKey(posting: Posting) {
   return posting.deadlineKind === "date" && posting.deadlineAt ? kstDateKey(new Date(posting.deadlineAt)) : null;
 }
 
-const isApplied = (posting: Posting) => posting.steps[0]?.completedAt != null;
+export const isApplied = (posting: Posting) => posting.steps[0]?.completedAt != null;
 
 // 아직 안 낸 공고 중 마감까지 3일 이내
-function isUrgent(posting: Posting, today: string) {
+export function isUrgent(posting: Posting, today: string) {
   const key = deadlineKey(posting);
   if (!key || isApplied(posting)) return false;
   const days = daysBetween(today, key);
@@ -33,7 +33,7 @@ function isUrgent(posting: Posting, today: string) {
 }
 
 // 그 달을 일요일부터 시작하는 주 단위 칸으로. 다른 달 칸은 null.
-function monthCells(year: number, month: number) {
+export function monthCells(year: number, month: number) {
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const cells: (string | null)[] = Array(firstWeekday).fill(null);

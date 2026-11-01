@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { defaultPrepLabels, type DeadlineKind } from "@/lib/postings";
+import { defaultPrepLabels, PRIORITIES, type DeadlineKind, type Priority } from "@/lib/postings";
 import { normalizeSourceUrl } from "@/lib/source-url";
 import type { ExtractedPosting } from "@/lib/extract-posting";
 import type { Json } from "@/lib/database.types";
@@ -107,6 +107,20 @@ export async function updatePosting(id: string, fields: PostingFields): Promise<
   if (problem) return { ok: false, message: problem };
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("postings").update(fieldsToRow(fields)).eq("id", id).select("id");
+  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+}
+
+// 목록 줄에서 고르는 우선순위·근로형태 (D-26)
+export async function updatePostingMeta(
+  id: string,
+  meta: { priority?: Priority; employmentType?: string | null },
+): Promise<ActionResult> {
+  if (meta.priority && !PRIORITIES.some((p) => p.value === meta.priority)) return { ok: false, message: FAILED };
+  const row: { priority?: Priority; employment_type?: string | null } = {};
+  if (meta.priority) row.priority = meta.priority;
+  if (meta.employmentType !== undefined) row.employment_type = meta.employmentType?.trim().slice(0, 50) || null;
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("postings").update(row).eq("id", id).select("id");
   return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
 }
 

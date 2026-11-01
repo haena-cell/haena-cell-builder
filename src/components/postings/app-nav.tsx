@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, List, ListChecks, Plus } from "lucide-react";
+import { CalendarDays, House, List, ListChecks, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // 앱 메뉴 (D-16, DESIGN.md 5): 컴퓨터는 왼쪽 메뉴바, 휴대폰·태블릿은 아래 떠 있는 탭바 + [+]
 const MENU = [
-  { href: "/app", label: "목록", icon: List },
+  { href: "/app", label: "홈", icon: House },
+  { href: "/app/postings", label: "목록", icon: List },
   { href: "/app/calendar", label: "달력", icon: CalendarDays },
   { href: "/app/todos", label: "할 일", icon: ListChecks },
 ] as const;
 
 const isActive = (pathname: string, href: string) =>
-  href === "/app" ? pathname === "/app" || pathname.startsWith("/app/postings") : pathname.startsWith(href);
+  href === "/app" ? pathname === "/app" : pathname.startsWith(href);
 
 export function SideNav() {
   const pathname = usePathname();
@@ -41,7 +42,7 @@ export function SideNav() {
   );
 }
 
-// 목록·달력·할 일 화면에서만 보인다 (공고 넣기·상세에서는 숨김)
+// 홈·목록·달력·할 일 화면에서만 보인다 (공고 넣기·상세에서는 숨김)
 export function MobileNav() {
   const pathname = usePathname();
   if (!MENU.some((m) => m.href === pathname)) return null;
@@ -59,12 +60,12 @@ export function MobileNav() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex h-11 items-center gap-1.5 rounded-full px-3.5 text-sm text-muted-foreground transition-colors",
+                "flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] text-muted-foreground transition-colors min-[400px]:w-16",
                 active && "bg-primary font-semibold text-primary-foreground",
               )}
             >
               <Icon className="size-[18px]" />
-              <span className="max-[359px]:sr-only">{label}</span>
+              <span>{label}</span>
             </Link>
           );
         })}

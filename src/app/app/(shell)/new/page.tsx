@@ -13,7 +13,7 @@ export default function NewPostingPage() {
       <PageTitle
         title="어떤 공고를 넣을까요?"
         description="채용 공고 링크를 붙여넣으면 기업·직무·마감일을 정리해 드려요."
-        back={{ href: "/app", label: "목록" }}
+        back={{ href: "/app", label: "홈" }}
       />
       <Card className="gap-6 px-4 md:px-6">
         <p className="rounded-xl bg-warning px-3.5 py-2.5 text-xs text-warning-foreground">

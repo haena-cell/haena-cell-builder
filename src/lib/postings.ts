@@ -38,7 +38,17 @@ export type Posting = {
   steps: PostingStep[];
   prepItems: PrepItem[];
   isSample: boolean;
+  priority: Priority;
 };
+
+// 우선순위와 근로형태 드롭다운 선택지 (D-26). 근로형태는 이 밖의 글자도 그대로 보여 준다
+export type Priority = "high" | "medium" | "low";
+export const PRIORITIES: { value: Priority; label: string }[] = [
+  { value: "high", label: "높음" },
+  { value: "medium", label: "보통" },
+  { value: "low", label: "낮음" },
+];
+export const EMPLOYMENT_TYPES = ["정규직", "계약직", "인턴", "파견", "프리랜서", "아르바이트"];
 
 // 준비 항목 기본 목록 + 공고의 제출 서류 중 다른 항목 (DB.md 4번)
 export function defaultPrepLabels(requiredDocs: string[]) {

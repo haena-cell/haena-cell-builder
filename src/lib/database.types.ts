@@ -92,6 +92,7 @@ export type Database = {
           is_sample: boolean
           job_title: string
           location: string | null
+          priority: string
           required_docs: string[]
           source_kind: string
           source_url: string | null
@@ -113,6 +114,7 @@ export type Database = {
           is_sample?: boolean
           job_title: string
           location?: string | null
+          priority?: string
           required_docs?: string[]
           source_kind: string
           source_url?: string | null
@@ -134,6 +136,7 @@ export type Database = {
           is_sample?: boolean
           job_title?: string
           location?: string | null
+          priority?: string
           required_docs?: string[]
           source_kind?: string
           source_url?: string | null

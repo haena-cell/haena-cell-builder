@@ -1,44 +1,167 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, ListFilter, Undo2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PostingCard } from "@/components/postings/posting-card";
-import { currentStepIndex, daysLeftFor, withCurrentStep, type Posting } from "@/lib/postings";
-import { setCurrentStep, setStepCompleted as setStepCompletedAction } from "@/lib/posting-actions";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DeadlineBadge } from "@/components/postings/posting-card";
+import { StepDots } from "@/components/postings/step-bar";
+import {
+  currentStepIndex,
+  daysLeftFor,
+  EMPLOYMENT_TYPES,
+  isSubmitStep,
+  kstDateKey,
+  PRIORITIES,
+  withCurrentStep,
+  type Posting,
+  type Priority,
+} from "@/lib/postings";
+import { setCurrentStep, setStepCompleted as setStepCompletedAction, updatePostingMeta } from "@/lib/posting-actions";
+import { cn } from "@/lib/utils";
 
-type Section = { title: string; postings: Posting[] };
+// 공고 목록 표 (D-26): 한 줄에 공고 하나. 상태 탭 + 우선순위·근로형태 걸러 보기, 줄에서 우선순위·근로형태 고르기
 
-// 마감 임박(D-3 이내) · 마감 전 · 진행 중(지원함) · 지난 공고(접힘)
-function groupPostings(postings: Posting[], daysLeft: Record<string, number | null>) {
-  const urgent: Posting[] = [];
-  const upcoming: Posting[] = [];
-  const inProgress: Posting[] = [];
-  const past: Posting[] = [];
+type Status = "urgent" | "upcoming" | "inProgress" | "past";
+const TABS: { value: Status | "all"; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "urgent", label: "마감 임박" },
+  { value: "upcoming", label: "마감 전" },
+  { value: "inProgress", label: "진행 중" },
+  { value: "past", label: "지난 공고" },
+];
+const NO_TYPE = "미정";
 
-  for (const posting of postings) {
-    const days = daysLeft[posting.id];
-    const applied = posting.steps[0]?.completedAt !== null;
-    const finished = currentStepIndex(posting.steps) === -1;
-    if (finished || (!applied && days !== null && days < 0)) past.push(posting);
-    else if (applied) inProgress.push(posting);
-    else if (days !== null && days <= 3) urgent.push(posting);
-    else upcoming.push(posting);
-  }
+// 마감 임박(D-3 이내) · 마감 전 · 진행 중(지원함) · 지난 공고
+function statusOf(posting: Posting, days: number | null): Status {
+  const applied = posting.steps[0]?.completedAt !== null;
+  const finished = currentStepIndex(posting.steps) === -1;
+  if (finished || (!applied && days !== null && days < 0)) return "past";
+  if (applied) return "inProgress";
+  if (days !== null && days <= 3) return "urgent";
+  return "upcoming";
+}
 
-  // 마감이 빠른 순, 날짜 없는 공고(상시·채용 시 마감)는 뒤로
-  const byDeadline = (a: Posting, b: Posting) =>
-    (daysLeft[a.id] ?? Infinity) - (daysLeft[b.id] ?? Infinity);
+const STATUS_ORDER: Status[] = ["urgent", "upcoming", "inProgress", "past"];
+const PRIORITY_CHIP: Record<Priority, string> = {
+  high: "bg-due text-due-foreground",
+  medium: "bg-secondary text-foreground/70",
+  low: "border border-border bg-card text-muted-foreground",
+};
 
-  const sections: Section[] = [
-    { title: "마감 임박", postings: urgent.sort(byDeadline) },
-    { title: "마감 전", postings: upcoming.sort(byDeadline) },
-    { title: "진행 중", postings: inProgress.sort(byDeadline) },
-  ];
-  return { sections: sections.filter((s) => s.postings.length > 0), past };
+function formatShortDeadline(posting: Posting) {
+  if (posting.deadlineKind === "rolling") return "상시";
+  if (posting.deadlineKind === "until_filled") return "채용 시";
+  if (!posting.deadlineAt) return "—";
+  const key = kstDateKey(new Date(posting.deadlineAt));
+  return `${Number(key.slice(5, 7))}월 ${Number(key.slice(8))}일`;
+}
+
+// 걸러 보기 드롭다운 (여러 개 고르기, 아무것도 안 고르면 전체)
+function FilterMenu({
+  label,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const active = selected.length > 0;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className={cn(active && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground aria-expanded:bg-primary aria-expanded:text-primary-foreground")}>
+          {label}
+          {active && <span className="tabular-nums">{selected.length}</span>}
+          <ChevronDown data-icon="inline-end" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuLabel>{label}로 걸러 보기</DropdownMenuLabel>
+        {options.map((o) => (
+          <DropdownMenuCheckboxItem
+            key={o.value}
+            checked={selected.includes(o.value)}
+            onSelect={(e) => e.preventDefault()}
+            onCheckedChange={(checked) =>
+              onChange(checked ? [...selected, o.value] : selected.filter((v) => v !== o.value))
+            }
+          >
+            {o.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+        {active && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem checked={false} onCheckedChange={() => onChange([])}>
+              모두 보기
+            </DropdownMenuCheckboxItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// 줄 안의 고르기 드롭다운 (우선순위·근로형태)
+function PickMenu({
+  label,
+  value,
+  display,
+  chipClassName,
+  options,
+  onPick,
+}: {
+  label: string;
+  value: string;
+  display: string;
+  chipClassName?: string;
+  options: { value: string; label: string }[];
+  onPick: (value: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${label}: ${display}, 바꾸기`}
+          className={cn(
+            "relative z-10 inline-flex h-7 max-w-full items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-opacity hover:opacity-80",
+            chipClassName ?? "bg-secondary text-foreground/70",
+          )}
+        >
+          <span className="truncate">{display}</span>
+          <ChevronDown className="size-3 shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-40">
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={value} onValueChange={onPick}>
+          {options.map((o) => (
+            <DropdownMenuRadioItem key={o.value} value={o.value}>
+              {o.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function PostingList({
@@ -54,7 +177,9 @@ export function PostingList({
   // 처음 그릴 때는 서버가 센 D-day, 그 뒤에는 브라우저에서 센다
   const [now, setNow] = useState<Date | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [showPast, setShowPast] = useState(false);
+  const [tab, setTab] = useState<Status | "all">("all");
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
 
   // 확인 화면에서 방금 저장한 공고(?saved=번호)를 알리고 잠깐 강조한다
   useEffect(() => {
@@ -64,19 +189,16 @@ export function PostingList({
     if (!justSaved) return;
     setHighlightId(justSaved);
     toast("저장했어요", { id: `saved-${justSaved}` });
-    router.replace("/app", { scroll: false });
+    router.replace("/app/postings", { scroll: false });
     const timer = setTimeout(() => setHighlightId(null), 3000);
     return () => clearTimeout(timer);
   }, [searchParams, router]);
 
+  const replace = (id: string, change: (p: Posting) => Posting) =>
+    setPostings((prev) => prev.map((p) => (p.id === id ? change(p) : p)));
+
   function setStepCompleted(postingId: string, stepIndex: number, completedAt: string | null) {
-    setPostings((prev) =>
-      prev.map((p) =>
-        p.id !== postingId
-          ? p
-          : { ...p, steps: p.steps.map((s, i) => (i === stepIndex ? { ...s, completedAt } : s)) },
-      ),
-    );
+    replace(postingId, (p) => ({ ...p, steps: p.steps.map((s, i) => (i === stepIndex ? { ...s, completedAt } : s)) }));
   }
 
   // 화면을 먼저 바꾸고 DB 에 저장한다. 실패하면 되돌린다.
@@ -102,62 +224,202 @@ export function PostingList({
   async function handleBack(posting: Posting) {
     const target = posting.steps.length - 1;
     const before = posting.steps;
-    const replaceSteps = (steps: Posting["steps"]) =>
-      setPostings((prev) => prev.map((p) => (p.id === posting.id ? { ...p, steps } : p)));
-    replaceSteps(withCurrentStep(before, target));
+    replace(posting.id, (p) => ({ ...p, steps: withCurrentStep(before, target) }));
     const result = await setCurrentStep(posting.id, target);
     if (!result.ok) {
-      replaceSteps(before);
+      replace(posting.id, (p) => ({ ...p, steps: before }));
       return toast.error(result.message);
     }
     toast(`${posting.company} · 지금 단계: ${posting.steps[target].name}`);
   }
 
-  const allDaysLeft = now
-    ? Object.fromEntries(postings.map((p) => [p.id, daysLeftFor(p, now)]))
-    : daysLeft;
-  const { sections, past } = groupPostings(postings, allDaysLeft);
+  async function saveMeta(posting: Posting, meta: { priority?: Priority; employmentType?: string | null }) {
+    const before = posting;
+    replace(posting.id, (p) => ({ ...p, ...meta }));
+    const result = await updatePostingMeta(posting.id, meta);
+    if (!result.ok) {
+      replace(posting.id, () => before);
+      toast.error(result.message);
+    }
+  }
 
-  const card = (posting: Posting) => (
-    <PostingCard
-      key={posting.id}
-      posting={posting}
-      daysLeft={allDaysLeft[posting.id] ?? null}
-      highlight={posting.id === highlightId}
-      onComplete={handleComplete}
-      onBack={handleBack}
-    />
-  );
+  const allDaysLeft = now ? Object.fromEntries(postings.map((p) => [p.id, daysLeftFor(p, now)])) : daysLeft;
+  const statusById = Object.fromEntries(postings.map((p) => [p.id, statusOf(p, allDaysLeft[p.id] ?? null)]));
+  const typeOf = (p: Posting) => p.employmentType?.trim() || NO_TYPE;
+  const typeOptions = [...new Set([...EMPLOYMENT_TYPES, ...postings.map(typeOf)])].map((t) => ({ value: t, label: t }));
+
+  const filtered = postings
+    .filter((p) => priorityFilter.length === 0 || priorityFilter.includes(p.priority))
+    .filter((p) => typeFilter.length === 0 || typeFilter.includes(typeOf(p)));
+  const count = (s: Status | "all") => (s === "all" ? filtered.length : filtered.filter((p) => statusById[p.id] === s).length);
+  // 상태 순서(마감 임박 → … → 지난 공고) 안에서 마감이 빠른 순, 날짜 없는 공고는 뒤로
+  const rows = filtered
+    .filter((p) => tab === "all" || statusById[p.id] === tab)
+    .sort(
+      (a, b) =>
+        STATUS_ORDER.indexOf(statusById[a.id]) - STATUS_ORDER.indexOf(statusById[b.id]) ||
+        (allDaysLeft[a.id] ?? Infinity) - (allDaysLeft[b.id] ?? Infinity),
+    );
+  const filtering = priorityFilter.length > 0 || typeFilter.length > 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      {sections.map((section) => (
-        <Card key={section.title} className="px-3 md:px-6" aria-label={section.title}>
-          <h2 className="flex items-center gap-2 px-1 text-lg font-bold tracking-tight">
-            {section.title}
-            <Badge variant={section.title === "마감 임박" ? "destructive" : "secondary"} className="tabular-nums">
-              {section.postings.length}
-            </Badge>
-          </h2>
-          <div className="grid gap-3 xl:grid-cols-2">{section.postings.map(card)}</div>
-        </Card>
-      ))}
-
-      {past.length > 0 && (
-        <Card className="px-3 md:px-6">
+    <Card className="gap-0 px-0 py-0 md:px-0 md:py-0">
+      {/* 상태 탭 */}
+      <div className="flex gap-1 overflow-x-auto border-b border-border px-3 pt-3 md:px-6 md:pt-4" role="tablist" aria-label="상태">
+        {TABS.map((t) => (
           <button
+            key={t.value}
             type="button"
-            onClick={() => setShowPast((v) => !v)}
-            className="flex items-center gap-2 self-start px-1 text-lg font-bold tracking-tight text-muted-foreground hover:text-foreground"
-            aria-expanded={showPast}
+            role="tab"
+            aria-selected={tab === t.value}
+            onClick={() => setTab(t.value)}
+            className={cn(
+              "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2.5 pb-3 text-sm text-muted-foreground transition-colors hover:text-foreground",
+              tab === t.value && "border-primary font-semibold text-foreground",
+            )}
           >
-            지난 공고
-            <Badge variant="secondary" className="tabular-nums">{past.length}</Badge>
-            <ChevronDown className={showPast ? "size-4 rotate-180 transition-transform" : "size-4 transition-transform"} />
+            {t.label}
+            <span
+              className={cn(
+                "rounded-full px-1.5 text-xs tabular-nums",
+                t.value === "urgent" && count(t.value) > 0 ? "bg-destructive-soft text-destructive" : "bg-secondary",
+              )}
+            >
+              {count(t.value)}
+            </span>
           </button>
-          {showPast && <div className="grid gap-3 xl:grid-cols-2">{past.map(card)}</div>}
-        </Card>
+        ))}
+      </div>
+
+      {/* 걸러 보기 */}
+      <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:px-6">
+        <ListFilter className="size-4 text-muted-foreground" aria-hidden />
+        <FilterMenu
+          label="우선순위"
+          options={PRIORITIES}
+          selected={priorityFilter}
+          onChange={setPriorityFilter}
+        />
+        <FilterMenu label="근로형태" options={typeOptions} selected={typeFilter} onChange={setTypeFilter} />
+        {filtering && (
+          <Button variant="ghost" size="sm" onClick={() => { setPriorityFilter([]); setTypeFilter([]); }}>
+            걸러 보기 지우기
+          </Button>
+        )}
+      </div>
+
+      {/* 표 머리 (넓은 화면) */}
+      <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_7.5rem] items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid">
+        <span>기업 · 직무</span>
+        <span>진행 단계</span>
+        <span>상태</span>
+        <span>마감</span>
+        <span>우선순위</span>
+        <span>근로형태</span>
+        <span className="sr-only">단계 넘기기</span>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            {postings.length === 0 ? "첫 공고를 넣어 보세요" : filtering ? "조건에 맞는 공고가 없어요" : "이 상태의 공고가 없어요"}
+          </p>
+          {filtering ? (
+            <Button variant="outline" size="sm" onClick={() => { setPriorityFilter([]); setTypeFilter([]); }}>
+              걸러 보기 지우기
+            </Button>
+          ) : postings.length === 0 ? (
+            <Button size="lg" asChild>
+              <Link href="/app/new">공고 넣기</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <ul className="flex flex-col divide-y divide-border pb-2">
+          {rows.map((posting) => {
+            const current = currentStepIndex(posting.steps);
+            const step = current === -1 ? null : posting.steps[current];
+            const days = allDaysLeft[posting.id] ?? null;
+            const priority = PRIORITIES.find((p) => p.value === posting.priority) ?? PRIORITIES[1];
+            return (
+              <li
+                key={posting.id}
+                className={cn(
+                  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_7.5rem]",
+                  posting.id === highlightId && "bg-accent",
+                )}
+              >
+                {/* 기업 · 직무 (줄 전체를 누르면 상세로) */}
+                <div className="min-w-0">
+                  <Link
+                    href={`/app/postings/${posting.id}`}
+                    className="block truncate text-sm font-semibold after:absolute after:inset-0"
+                  >
+                    {posting.company}
+                  </Link>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {posting.jobTitle}
+                    {posting.isSample && <span className="ml-1.5 text-warning-foreground">· 연습용 예시</span>}
+                  </p>
+                </div>
+
+                {/* 휴대폰: 상태·마감은 오른쪽 위에 */}
+                <div className="flex flex-col items-end gap-1 lg:hidden">
+                  <DeadlineBadge posting={posting} daysLeft={days} />
+                  <span className="text-xs text-muted-foreground tabular-nums">{formatShortDeadline(posting)}</span>
+                </div>
+
+                {/* 진행 단계 */}
+                <div className="col-span-2 flex min-w-0 items-center gap-2.5 lg:col-span-1 lg:flex-col lg:items-start lg:gap-1">
+                  <StepDots steps={posting.steps} current={current} />
+                  <span className="truncate text-xs text-muted-foreground">{step ? step.name : "전형 끝"}</span>
+                </div>
+
+                <div className="hidden lg:block">
+                  <DeadlineBadge posting={posting} daysLeft={days} />
+                </div>
+                <span className="hidden text-sm tabular-nums lg:block">{formatShortDeadline(posting)}</span>
+
+                {/* 우선순위 · 근로형태 · 단계 넘기기 (휴대폰은 한 줄에) */}
+                <div className="col-span-2 flex items-center gap-1.5 lg:contents">
+                  <div className="lg:min-w-0">
+                    <PickMenu
+                      label="우선순위"
+                      value={posting.priority}
+                      display={priority.label}
+                      chipClassName={PRIORITY_CHIP[posting.priority]}
+                      options={PRIORITIES}
+                      onPick={(v) => saveMeta(posting, { priority: v as Priority })}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <PickMenu
+                      label="근로형태"
+                      value={typeOf(posting)}
+                      display={typeOf(posting)}
+                      options={[...typeOptions.filter((o) => o.value !== NO_TYPE), { value: NO_TYPE, label: NO_TYPE }]}
+                      onPick={(v) => saveMeta(posting, { employmentType: v === NO_TYPE ? null : v })}
+                    />
+                  </div>
+                  <div className="ml-auto lg:ml-0 lg:justify-self-end">
+                    {step ? (
+                      <Button variant="outline" size="sm" className="relative z-10" onClick={() => handleComplete(posting, current)}>
+                        <Check data-icon="inline-start" />
+                        {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="relative z-10" onClick={() => handleBack(posting)}>
+                        <Undo2 data-icon="inline-start" />
+                        이전 단계로
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
-    </div>
+    </Card>
   );
 }

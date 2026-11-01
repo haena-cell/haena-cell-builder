@@ -181,7 +181,7 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
             {total === 0 ? "공고 상세의 준비 항목에서 할 일을 추가해 보세요" : "남은 할 일이 없어요"}
           </p>
           <Button variant="outline" size="lg" asChild>
-            <Link href="/app">공고 목록으로</Link>
+            <Link href="/app/postings">공고 목록으로</Link>
           </Button>
         </Card>
       ) : sort === "posting" ? (

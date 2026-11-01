@@ -18,11 +18,11 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
   if (!posting) {
     return (
       <>
-        <PageTitle title="공고를 찾을 수 없어요" back={{ href: "/app", label: "목록" }} />
+        <PageTitle title="공고를 찾을 수 없어요" back={{ href: "/app/postings", label: "목록" }} />
         <Card className="items-start px-6">
           <p className="text-sm text-muted-foreground">지워졌거나 주소가 잘못됐을 수 있어요.</p>
           <Button size="lg" asChild>
-            <Link href="/app">목록으로</Link>
+            <Link href="/app/postings">목록으로</Link>
           </Button>
         </Card>
       </>

@@ -164,7 +164,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         return;
       }
       clearDraft();
-      router.push(`/app?saved=${result.id}`);
+      router.push(`/app/postings?saved=${result.id}`);
     });
   }
 
