@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles } from "lucide-react";
+import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,12 +94,14 @@ export function NewPostingForm() {
         setFallbackMessage(data.message);
         setMode("text");
       } else if (data.status === "ok") {
+        // 링크로 못 읽어 글·캡처로 넣을 때도 그 링크는 함께 저장한다 (나중에 원래 공고로 가 보기, D-31)
+        const link = linkToKeep || undefined;
         const source: DraftSource =
           input.kind === "link"
             ? { kind: "link", url: input.url }
             : input.kind === "image"
-              ? { kind: "image", previewDataUrl: input.dataUrl }
-              : { kind: "text", text: input.text };
+              ? { kind: "image", previewDataUrl: input.dataUrl, url: link }
+              : { kind: "text", text: input.text, url: link };
         if (!saveDraft({ posting: data.posting, isExample: data.isExample, source, hint: data.hint })) {
           setError("정리 결과를 옮기지 못했어요. 다시 시도해 주세요.");
           return;
@@ -121,6 +123,8 @@ export function NewPostingForm() {
   }
 
   const canSubmit = mode === "link" ? !!url.trim() : mode === "text" ? !!text.trim() : !!image;
+  // 글·캡처로 넣을 때 링크 칸에 남아 있는 링크 (함께 저장)
+  const linkToKeep = /^https?:\/\/\S+$/i.test(url.trim()) ? url.trim() : "";
 
   return (
     <div className="flex flex-col gap-5">
@@ -172,6 +176,19 @@ export function NewPostingForm() {
                 <Badge key={site} variant="secondary">{site}</Badge>
               ))}
             </div>
+          </div>
+        )}
+
+        {mode !== "link" && linkToKeep && (
+          <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm">
+            <Link2 className="size-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">이 링크도 함께 저장돼요</p>
+              <p className="truncate">{linkToKeep}</p>
+            </div>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="링크 빼기" onClick={() => setUrl("")} disabled={loading}>
+              <X />
+            </Button>
           </div>
         )}
 

@@ -177,7 +177,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         requiredDocs: docs,
         steps,
         sourceKind: draft.source.kind,
-        sourceUrl: draft.source.kind === "link" ? draft.source.url : null,
+        sourceUrl: draft.source.url ?? null,
         sourceText: draft.source.kind === "text" ? draft.source.text : null,
         aiRaw: draft.posting,
       });
@@ -237,8 +237,8 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           </button>
           {showSource && (
             <div className="px-4 pb-3 text-sm">
-              {draft.source.kind === "link" && (
-                <a href={draft.source.url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 break-all underline underline-offset-2">
+              {draft.source.url && (
+                <a href={draft.source.url} target="_blank" rel="noreferrer" className="mb-3 inline-flex max-w-full items-center gap-1 break-all underline underline-offset-2">
                   {draft.source.url}
                   <ExternalLink className="size-3.5 shrink-0" />
                 </a>

@@ -6,8 +6,8 @@ import type { ExtractedPosting } from "@/lib/extract-posting";
 
 export type DraftSource =
   | { kind: "link"; url: string }
-  | { kind: "text"; text: string }
-  | { kind: "image"; previewDataUrl: string };
+  | { kind: "text"; text: string; url?: string } // url: 못 읽은 링크도 함께 저장 (D-31)
+  | { kind: "image"; previewDataUrl: string; url?: string };
 
 export type Draft = {
   posting: ExtractedPosting;

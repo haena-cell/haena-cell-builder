@@ -69,14 +69,16 @@ export async function createPosting(input: NewPosting): Promise<ActionResult<{ i
   const docs = [...new Set(input.requiredDocs.map((d) => d.trim()).filter((d) => d.length > 0 && d.length <= 50))];
 
   const row = { ...fieldsToRow(input), required_docs: docs };
+  const sourceUrl = /^https?:\/\/\S+$/i.test(input.sourceUrl?.trim() ?? "") ? input.sourceUrl!.trim().slice(0, 2000) : null;
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase
     .from("postings")
     .insert({
       ...row,
       source_kind: input.sourceKind,
-      source_url: input.sourceKind === "link" ? clean(input.sourceUrl) : null,
-      source_url_normalized: input.sourceKind === "link" ? normalizeSourceUrl(input.sourceUrl) : null,
+      // 링크로 넣었거나, 링크를 못 읽어 글·캡처로 넣었을 때 함께 받은 링크 (D-31)
+      source_url: sourceUrl,
+      source_url_normalized: normalizeSourceUrl(sourceUrl),
       source_text: input.sourceKind === "text" ? input.sourceText?.slice(0, 20_000) || null : null,
       ai_raw: (input.aiRaw ?? null) as Json,
       confirmed: { ...row, steps } as Json,
