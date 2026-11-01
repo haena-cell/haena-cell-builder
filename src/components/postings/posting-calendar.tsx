@@ -42,7 +42,7 @@ export function monthCells(year: number, month: number) {
   return cells;
 }
 
-function formatDay(key: string) {
+export function formatDay(key: string) {
   return new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", month: "long", day: "numeric", weekday: "short" }).format(
     new Date(`${key}T00:00:00Z`),
   );
