@@ -3,12 +3,13 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2 } from "lucide-react";
+import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/postings/segmented";
 import type { ExtractInput, ExtractResult } from "@/lib/extract-posting";
 import { findSavedByLink, type PostingSummary } from "@/lib/posting-actions";
 import { saveDraft, type DraftSource } from "@/lib/practice-store";
@@ -113,167 +114,154 @@ export function NewPostingForm() {
     }
   }
 
+  const canSubmit = mode === "link" ? !!url.trim() : mode === "text" ? !!text.trim() : !!image;
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* 링크 */}
-      <form
-        className="flex flex-col gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit("link");
-        }}
-      >
-        <Label htmlFor="posting-url">공고 링크</Label>
-        <div className="flex gap-2">
-          <Input
-            id="posting-url"
-            type="url"
-            inputMode="url"
-            placeholder="https://"
-            value={url}
-            onChange={(e) => { setUrl(e.target.value); setSaved(null); }}
-            disabled={loading}
-            className="h-10 flex-1"
-          />
-          <Button type="submit" size="lg" className="h-10 px-4" disabled={loading || !url.trim()}>
-            {loading && mode === "link" ? <Loader2 className="animate-spin" /> : <Link2 data-icon="inline-start" />}
-            정리하기
-          </Button>
-        </div>
-        {!fallbackMessage && mode === "link" && (
-          <p className="text-xs text-muted-foreground">
-            링크가 없으면?{" "}
-            <button type="button" className="underline underline-offset-2" onClick={() => switchMode("text")}>
-              글 붙여넣기
-            </button>{" "}
-            ·{" "}
-            <button type="button" className="underline underline-offset-2" onClick={() => switchMode("image")}>
-              캡처 올리기
-            </button>
-          </p>
-        )}
-      </form>
+    <div className="flex flex-col gap-5">
+      <Segmented
+        label="넣는 방법"
+        value={mode}
+        onChange={switchMode}
+        disabled={loading}
+        options={[
+          { value: "link", label: "링크", icon: Link2 },
+          { value: "text", label: "글 붙여넣기", icon: ClipboardPaste },
+          { value: "image", label: "캡처", icon: ImageUp },
+        ]}
+      />
 
       {fallbackMessage && (
-        <div className="flex gap-2 rounded-xl bg-warning px-3 py-2.5 text-sm text-warning-foreground" role="status">
+        <div className="flex gap-2.5 rounded-2xl bg-warning px-4 py-3 text-sm text-warning-foreground" role="status">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <p>
-            {fallbackMessage} 공고 글을 붙여넣거나 캡처를 올려 주세요.
-          </p>
+          <p>{fallbackMessage} 공고 글을 붙여넣거나 캡처를 올려 주세요.</p>
         </div>
       )}
 
-      {/* 글 붙여넣기 · 캡처 올리기 */}
-      {mode !== "link" && (
-        <section className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2" role="tablist">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              role="tab"
-              aria-selected={mode === "text"}
-              className={cn(mode === "text" && "border-primary bg-muted")}
-              onClick={() => switchMode("text")}
-              disabled={loading}
-            >
-              <ClipboardPaste data-icon="inline-start" />글 붙여넣기
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              role="tab"
-              aria-selected={mode === "image"}
-              className={cn(mode === "image" && "border-primary bg-muted")}
-              onClick={() => switchMode("image")}
-              disabled={loading}
-            >
-              <ImageUp data-icon="inline-start" />캡처 올리기
-            </Button>
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (canSubmit) submit(mode);
+        }}
+      >
+        {mode === "link" && (
+          <div className="flex flex-col gap-3">
+            <Label htmlFor="posting-url" className="px-1">채용 공고 링크</Label>
+            <div className="relative">
+              <Link2 className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="posting-url"
+                type="url"
+                inputMode="url"
+                placeholder="https://www.saramin.co.kr/…"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); setSaved(null); }}
+                disabled={loading}
+                className="h-12 rounded-full pl-10"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 px-1">
+              <span className="text-xs text-muted-foreground">바로 읽는 사이트</span>
+              {["사람인", "잡코리아", "원티드", "링커리어", "인크루트"].map((site) => (
+                <Badge key={site} variant="secondary">{site}</Badge>
+              ))}
+            </div>
           </div>
+        )}
 
-          {mode === "text" ? (
+        {mode === "text" && (
+          <div className="flex flex-col gap-3">
+            <Label htmlFor="posting-text" className="px-1">공고 글</Label>
             <Textarea
-              aria-label="공고 글"
-              placeholder="공고 글을 여기에 붙여넣어 주세요"
+              id="posting-text"
+              placeholder={"공고 화면의 글을 통째로 복사해 붙여넣어 주세요.\n예) 근무지 · 고용형태 · 접수기간 · 제출서류 · 전형절차"}
               value={text}
               onChange={(e) => setText(e.target.value)}
               disabled={loading}
-              className="min-h-48"
+              className="min-h-56 rounded-2xl"
             />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0])}
-              />
-              {image ? (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="overflow-hidden rounded-xl border border-border"
-                  disabled={loading}
-                >
-                  {/* 기기 안에서만 보여 주는 미리보기 */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image} alt="고른 캡처 미리보기" className="mx-auto max-h-80 w-auto" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-input text-sm text-muted-foreground hover:bg-muted"
-                  disabled={loading}
-                >
-                  <ImageUp className="size-5" />
-                  사진첩에서 캡처 고르기
-                </button>
-              )}
-              <p className="text-xs text-muted-foreground">캡처는 정리에만 쓰고 저장하지 않아요.</p>
-            </div>
-          )}
+          </div>
+        )}
 
-          <Button
-            type="button"
-            size="lg"
-            className="h-10"
-            onClick={() => submit(mode)}
-            disabled={loading || (mode === "text" ? !text.trim() : !image)}
-          >
-            {loading && <Loader2 className="animate-spin" />}
-            정리하기
-          </Button>
-        </section>
-      )}
+        {mode === "image" && (
+          <div className="flex flex-col gap-3">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+            {image ? (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="group relative overflow-hidden rounded-3xl bg-muted"
+                disabled={loading}
+                aria-label="다른 캡처 고르기"
+              >
+                {/* 기기 안에서만 보여 주는 미리보기 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image} alt="고른 캡처 미리보기" className="mx-auto max-h-80 w-auto" />
+                <span className="absolute right-3 bottom-3 rounded-full bg-card px-3 py-1.5 text-xs font-medium shadow-soft">
+                  다른 캡처 고르기
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex h-56 flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed border-input bg-muted/50 text-sm text-muted-foreground transition-colors hover:bg-muted"
+                disabled={loading}
+              >
+                <span className="flex size-12 items-center justify-center rounded-full bg-card shadow-soft">
+                  <ImageUp className="size-5 text-foreground" />
+                </span>
+                <span className="font-medium text-foreground">공고 캡처 고르기</span>
+                <span className="text-xs">휴대폰 사진첩이나 컴퓨터의 캡처 이미지</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={loading || !canSubmit}>
+          {loading ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
+          {loading ? "정리하는 중…" : "정리하기"}
+        </Button>
+      </form>
 
       {loading && (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-          <Loader2 className="size-4 animate-spin" />
-          공고를 읽는 중… 10~20초 걸려요
-        </p>
+        <div className="flex items-center gap-3 rounded-2xl bg-muted px-4 py-3" role="status">
+          <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+          <div className="text-sm">
+            <p className="font-medium">공고를 읽고 있어요</p>
+            <p className="text-xs text-muted-foreground">페이지 정보를 먼저 읽고, 빈 칸은 AI가 채워요. 보통 5~20초 걸려요.</p>
+          </div>
+        </div>
       )}
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="rounded-2xl bg-destructive-soft px-4 py-3 text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
       {saved && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-warning px-3 py-3" role="alert">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warning px-4 py-3" role="alert">
           <div className="min-w-0 text-sm text-warning-foreground">
             <p className="font-semibold">이미 저장한 공고예요</p>
             <p className="truncate">
               {saved.company} · {saved.jobTitle}
             </p>
           </div>
-          <Button variant="outline" size="lg" className="bg-card px-3" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href={`/app/postings/${saved.id}`}>그 공고 보기</Link>
           </Button>
         </div>
       )}
+
+      <p className="flex items-start gap-1.5 px-1 text-xs text-muted-foreground">
+        <Lock className="mt-0.5 size-3.5 shrink-0" />
+        공고 글 속 전화번호·이메일은 지우고 AI에 보내요. 원본 글과 캡처는 저장하지 않아요.
+      </p>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { DueChip } from "@/components/postings/prep-todos";
+import { Segmented } from "@/components/postings/segmented";
 import { setPrepDone, updateSubtask } from "@/lib/posting-actions";
 import { currentStepIndex, kstDateKey, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
@@ -147,28 +148,16 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex rounded-full bg-card p-1" role="radiogroup" aria-label="정렬">
-          {(
-            [
-              { value: "posting", label: "마감 임박 공고 순" },
-              { value: "due", label: "할 일 마감일 순" },
-            ] as const
-          ).map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={sort === o.value}
-              onClick={() => changeSort(o.value)}
-              className={cn(
-                "rounded-full px-3.5 py-2 text-sm text-muted-foreground transition-colors",
-                sort === o.value && "bg-primary font-semibold text-primary-foreground shadow-soft",
-              )}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="정렬"
+          value={sort}
+          onChange={changeSort}
+          className="bg-card"
+          options={[
+            { value: "posting", label: "마감 임박 공고 순" },
+            { value: "due", label: "할 일 마감일 순" },
+          ]}
+        />
         <label className="flex cursor-pointer items-center gap-2 px-1 text-sm text-muted-foreground">
           <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} className="size-4 accent-primary" />
           완료한 일 보기
