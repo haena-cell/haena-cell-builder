@@ -17,7 +17,7 @@ export default function NewPostingPage() {
       />
       <Card className="gap-6 px-4 md:px-6">
         <p className="rounded-xl bg-warning px-3.5 py-2.5 text-xs text-warning-foreground">
-          연습용 예시예요. 아직 실제로 공고를 읽지 않고 예시 결과를 보여 드려요. 인스타그램 링크를 넣으면 &lsquo;읽을 수 없음&rsquo; 안내를 볼 수 있어요.
+          채용 사이트 링크는 페이지에 적힌 채용 정보를 실제로 읽어요(AI 없이, 비용 없음). 글 붙여넣기·캡처는 아직 연습용 예시 결과를 보여 드려요.
         </p>
         <NewPostingForm />
       </Card>

@@ -1,8 +1,9 @@
 import type { DeadlineKind } from "@/lib/postings";
+import { readPostingLink } from "@/lib/read-posting-link";
 
-// 공고 원본(링크·글·캡처)을 정해진 항목으로 정리하는 기능.
-// 지금은 연습용 예시 응답만 돌려준다 (D-14).
-// ▶ 실제 연결 지점: 이 파일의 extractPosting 만 바꾼다 — 링크 읽기(T-15), Claude 정리(T-06).
+// 공고 원본(링크·글·캡처)을 정해진 항목으로 정리하는 기능. AI 는 쓰지 않는다 (D-23).
+// 링크: 페이지 안의 정리된 채용 정보를 읽는다 (T-15, read-posting-link.ts)
+// ▶ 아직 연습용 예시: 글 붙여넣기(T-06 키워드 정리)·캡처(T-04b) — 이 파일의 extractPosting 에서 바꾼다
 
 export type ExtractInput =
   | { kind: "link"; url: string }
@@ -50,14 +51,16 @@ const EXAMPLE_POSTING: ExtractedPosting = {
 };
 
 export async function extractPosting(input: ExtractInput): Promise<ExtractResult> {
+  if (input.kind === "link") {
+    if (needsLogin(input.url)) {
+      return { status: "need_fallback", message: "이 사이트는 로그인해야 볼 수 있어서 바로 읽을 수 없어요." };
+    }
+    const result = await readPostingLink(input.url);
+    if (result.status === "unreadable") return { status: "need_fallback", message: result.message };
+    return { status: "ok", posting: result.posting, isExample: false };
+  }
+
   // 연습용: 읽는 중 화면을 볼 수 있게 잠깐 기다린다
   await new Promise((resolve) => setTimeout(resolve, 1200));
-
-  if (input.kind === "link" && needsLogin(input.url)) {
-    return {
-      status: "need_fallback",
-      message: "이 사이트는 로그인해야 볼 수 있어서 바로 읽을 수 없어요.",
-    };
-  }
   return { status: "ok", posting: EXAMPLE_POSTING, isExample: true };
 }

@@ -31,7 +31,7 @@ function parseInput(body: unknown): ExtractInput | string {
 }
 
 // 공고 정리. 캡처는 정리에만 쓰고 저장하지 않는다 (D-08).
-// TODO(T-03): 로그인한 사람만 부를 수 있게 막는다 — 실제 AI 연결 전에 반드시.
+// 로그인한 사람만 부를 수 있다: 로그인 안 하면 proxy.ts 가 /api/* 를 401 로 막는다.
 export async function POST(request: Request) {
   let body: unknown;
   try {

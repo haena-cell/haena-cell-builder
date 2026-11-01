@@ -172,7 +172,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
     <div className="flex flex-col gap-6 pb-24 md:pb-0">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight md:text-2xl">AI가 정리했어요</h1>
+          <h1 className="text-xl font-bold tracking-tight md:text-2xl">정리했어요</h1>
           <p className="mt-1 text-sm text-muted-foreground">틀린 칸만 고쳐 주세요. 노란 칸은 꼭 확인해 주세요.</p>
         </div>
         {draft.isExample && <Badge variant="warning" className="shrink-0">연습용 예시</Badge>}
