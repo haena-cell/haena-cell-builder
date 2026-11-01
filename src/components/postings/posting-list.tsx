@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronDown, ListFilter, Undo2 } from "lucide-react";
+import { Check, ChevronDown, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,13 +11,26 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DeadlineBadge } from "@/components/postings/posting-card";
+import { PostingEditForm } from "@/components/postings/posting-edit-form";
 import { StepDots } from "@/components/postings/step-bar";
 import {
   currentStepIndex,
@@ -30,7 +43,7 @@ import {
   type Posting,
   type Priority,
 } from "@/lib/postings";
-import { setCurrentStep, setStepCompleted as setStepCompletedAction, updatePostingMeta } from "@/lib/posting-actions";
+import { deletePosting, setCurrentStep, setStepCompleted as setStepCompletedAction, updatePosting, updatePostingMeta } from "@/lib/posting-actions";
 import { cn } from "@/lib/utils";
 
 // 공고 목록 표 (D-26): 한 줄에 공고 하나. 상태 탭 + 우선순위·근로형태 걸러 보기, 줄에서 우선순위·근로형태 고르기
@@ -180,6 +193,10 @@ export function PostingList({
   const [tab, setTab] = useState<Status | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  // 줄의 [⋯] 메뉴에서 연 편집 창·삭제 확인 창 (D-32)
+  const [editing, setEditing] = useState<Posting | null>(null);
+  const [deleting, setDeleting] = useState<Posting | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   // 확인 화면에서 방금 저장한 공고(?saved=번호)를 알리고 잠깐 강조한다
   useEffect(() => {
@@ -241,6 +258,26 @@ export function PostingList({
       replace(posting.id, () => before);
       toast.error(result.message);
     }
+  }
+
+  async function saveEdit(next: Posting) {
+    const result = await updatePosting(next.id, next);
+    if (!result.ok) return result.message;
+    replace(next.id, () => next);
+    setEditing(null);
+    toast("고친 내용을 저장했어요");
+    return null;
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setRemoving(true);
+    const result = await deletePosting(deleting.id);
+    setRemoving(false);
+    if (!result.ok) return toast.error(result.message);
+    setPostings((prev) => prev.filter((p) => p.id !== deleting.id));
+    toast(`${deleting.company} 공고를 지웠어요`);
+    setDeleting(null);
   }
 
   const allDaysLeft = now ? Object.fromEntries(postings.map((p) => [p.id, daysLeftFor(p, now)])) : daysLeft;
@@ -309,7 +346,7 @@ export function PostingList({
       </div>
 
       {/* 표 머리 (넓은 화면) */}
-      <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_7.5rem] items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid">
+      <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_9.5rem] items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid">
         <span>기업 · 직무</span>
         <span>진행 단계</span>
         <span>상태</span>
@@ -345,7 +382,7 @@ export function PostingList({
               <li
                 key={posting.id}
                 className={cn(
-                  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_7.5rem]",
+                  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_9.5rem]",
                   posting.id === highlightId && "bg-accent",
                 )}
               >
@@ -401,7 +438,7 @@ export function PostingList({
                       onPick={(v) => saveMeta(posting, { employmentType: v === NO_TYPE ? null : v })}
                     />
                   </div>
-                  <div className="ml-auto lg:ml-0 lg:justify-self-end">
+                  <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:justify-self-end">
                     {step ? (
                       <Button variant="outline" size="sm" className="relative z-10" onClick={() => handleComplete(posting, current)}>
                         <Check data-icon="inline-start" />
@@ -413,6 +450,23 @@ export function PostingList({
                         이전 단계로
                       </Button>
                     )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm" className="relative z-10" aria-label={`${posting.company} 더 보기`}>
+                          <MoreHorizontal />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-36">
+                        <DropdownMenuItem onSelect={() => setEditing(posting)}>
+                          <Pencil />
+                          편집
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(posting)}>
+                          <Trash2 />
+                          삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </li>
@@ -420,6 +474,37 @@ export function PostingList({
           })}
         </ul>
       )}
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>공고 편집</DialogTitle>
+            <DialogDescription>전형 단계와 준비 항목은 공고 상세에서 바꿔요.</DialogDescription>
+          </DialogHeader>
+          {editing && <PostingEditForm key={editing.id} posting={editing} onSave={saveEdit} onCancel={() => setEditing(null)} />}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && !removing && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{deleting?.company} 공고를 지울까요?</AlertDialogTitle>
+            <AlertDialogDescription>전형 단계·준비 항목·할 일도 함께 지워지고 되돌릴 수 없어요.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removing}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDelete();
+              }}
+            >
+              {removing ? "지우는 중…" : "지우기"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

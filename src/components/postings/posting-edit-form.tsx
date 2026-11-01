@@ -1,0 +1,110 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Segmented } from "@/components/postings/segmented";
+import type { DeadlineKind, Posting } from "@/lib/postings";
+
+// 공고 기본 정보 고치기 (기업명·직무·마감·근무 정보). 공고 상세와 목록의 [편집] 창에서 함께 쓴다 (D-32)
+
+const DEADLINE_KINDS: { value: DeadlineKind; label: string }[] = [
+  { value: "date", label: "날짜" },
+  { value: "rolling", label: "상시" },
+  { value: "until_filled", label: "채용 시 마감" },
+];
+
+function kstParts(iso: string | null, timeKnown: boolean) {
+  if (!iso) return { date: "", time: "" };
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d);
+  const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+  return { date, time: timeKnown ? time : "" };
+}
+
+export function PostingEditForm({
+  posting,
+  onSave,
+  onCancel,
+}: {
+  posting: Posting;
+  onSave: (p: Posting) => Promise<string | null>; // 실패하면 안내 문구, 성공하면 null
+  onCancel: () => void;
+}) {
+  const initial = kstParts(posting.deadlineAt, posting.deadlineTimeKnown);
+  const [company, setCompany] = useState(posting.company);
+  const [jobTitle, setJobTitle] = useState(posting.jobTitle);
+  const [deadlineKind, setDeadlineKind] = useState<DeadlineKind>(posting.deadlineKind);
+  const [date, setDate] = useState(initial.date);
+  const [time, setTime] = useState(initial.time);
+  const [location, setLocation] = useState(posting.location ?? "");
+  const [employmentType, setEmploymentType] = useState(posting.employmentType ?? "");
+  const [companySize, setCompanySize] = useState(posting.companySize ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!company.trim() || !jobTitle.trim()) return setError("기업명과 직무를 채워 주세요.");
+    if (deadlineKind === "date" && !date) return setError("마감 날짜를 골라 주세요.");
+    setSaving(true);
+    const problem = await onSave({
+      ...posting,
+      company: company.trim(),
+      jobTitle: jobTitle.trim(),
+      deadlineKind,
+      deadlineAt: deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null,
+      deadlineTimeKnown: deadlineKind === "date" && time !== "",
+      location: location.trim() || null,
+      employmentType: employmentType.trim() || null,
+      companySize: companySize.trim() || null,
+    });
+    setSaving(false);
+    setError(problem);
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`edit-company-${posting.id}`}>기업명</Label>
+          <Input id={`edit-company-${posting.id}`} value={company} maxLength={100} onChange={(e) => setCompany(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`edit-job-${posting.id}`}>직무</Label>
+          <Input id={`edit-job-${posting.id}`} value={jobTitle} maxLength={100} onChange={(e) => setJobTitle(e.target.value)} />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label>마감일</Label>
+        <Segmented label="마감 방식" value={deadlineKind} onChange={setDeadlineKind} options={DEADLINE_KINDS} />
+        {deadlineKind === "date" && (
+          <div className="grid grid-cols-2 gap-2">
+            <Input type="date" aria-label="마감 날짜" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Input type="time" aria-label="마감 시각 (없으면 비워 두기)" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+        )}
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`edit-location-${posting.id}`}>근무지</Label>
+          <Input id={`edit-location-${posting.id}`} value={location} onChange={(e) => setLocation(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`edit-type-${posting.id}`}>근무 형태</Label>
+          <Input id={`edit-type-${posting.id}`} value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`edit-size-${posting.id}`}>기업 규모</Label>
+          <Input id={`edit-size-${posting.id}`} value={companySize} onChange={(e) => setCompanySize(e.target.value)} />
+        </div>
+      </div>
+      {error && <p className="rounded-2xl bg-destructive-soft px-4 py-3 text-sm text-destructive" role="alert">{error}</p>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>취소</Button>
+        <Button type="submit" size="lg" className="px-6" disabled={saving}>{saving ? "저장 중…" : "저장"}</Button>
+      </div>
+    </form>
+  );
+}

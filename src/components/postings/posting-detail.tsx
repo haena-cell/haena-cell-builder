@@ -6,11 +6,10 @@ import { CalendarPlus, Check, ChevronDown, Download, ExternalLink, Pencil, Trash
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { PageTitle } from "@/components/postings/page-title";
 import { DeadlineBadge } from "@/components/postings/posting-card";
+import { PostingEditForm } from "@/components/postings/posting-edit-form";
 import { PrepTodos } from "@/components/postings/prep-todos";
 import { StepBar } from "@/components/postings/step-bar";
 import { canAddToCalendar, googleCalendarUrl, icsFile } from "@/lib/calendar";
@@ -20,7 +19,6 @@ import {
   formatDeadline,
   isSubmitStep,
   kstDateKey,
-  type DeadlineKind,
   withCurrentStep,
   type Posting,
 } from "@/lib/postings";
@@ -32,20 +30,6 @@ import {
 } from "@/lib/posting-actions";
 import { cn } from "@/lib/utils";
 
-const DEADLINE_KINDS: { value: DeadlineKind; label: string }[] = [
-  { value: "date", label: "날짜" },
-  { value: "rolling", label: "상시" },
-  { value: "until_filled", label: "채용 시 마감" },
-];
-
-function kstParts(iso: string | null, timeKnown: boolean) {
-  if (!iso) return { date: "", time: "" };
-  const d = new Date(iso);
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(d);
-  const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
-  return { date, time: timeKnown ? time : "" };
-}
-
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
     <Card className="gap-4 px-4 md:px-6" aria-label={title}>
@@ -54,95 +38,6 @@ function Section({ title, children, aside }: { title: string; children: React.Re
         {aside}
       </div>
       {children}
-    </Card>
-  );
-}
-
-// 기본 정보 고치기 (기업명·직무·마감·근무 정보)
-function EditForm({ posting, onSave, onCancel }: { posting: Posting; onSave: (p: Posting) => Promise<string | null>; onCancel: () => void }) {
-  const initial = kstParts(posting.deadlineAt, posting.deadlineTimeKnown);
-  const [company, setCompany] = useState(posting.company);
-  const [jobTitle, setJobTitle] = useState(posting.jobTitle);
-  const [deadlineKind, setDeadlineKind] = useState<DeadlineKind>(posting.deadlineKind);
-  const [date, setDate] = useState(initial.date);
-  const [time, setTime] = useState(initial.time);
-  const [location, setLocation] = useState(posting.location ?? "");
-  const [employmentType, setEmploymentType] = useState(posting.employmentType ?? "");
-  const [companySize, setCompanySize] = useState(posting.companySize ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!company.trim() || !jobTitle.trim()) return setError("기업명과 직무를 채워 주세요.");
-    if (deadlineKind === "date" && !date) return setError("마감 날짜를 골라 주세요.");
-    setSaving(true);
-    const problem = await onSave({
-      ...posting,
-      company: company.trim(),
-      jobTitle: jobTitle.trim(),
-      deadlineKind,
-      deadlineAt: deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null,
-      deadlineTimeKnown: deadlineKind === "date" && time !== "",
-      location: location.trim() || null,
-      employmentType: employmentType.trim() || null,
-      companySize: companySize.trim() || null,
-    });
-    setSaving(false);
-    setError(problem);
-  }
-
-  return (
-    <Card className="px-4 md:px-6">
-    <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-company">기업명</Label>
-          <Input id="edit-company" className="h-10" value={company} maxLength={100} onChange={(e) => setCompany(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-job">직무</Label>
-          <Input id="edit-job" className="h-10" value={jobTitle} maxLength={100} onChange={(e) => setJobTitle(e.target.value)} />
-        </div>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label>마감일</Label>
-        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="마감 방식">
-          {DEADLINE_KINDS.map((k) => (
-            <Button key={k.value} type="button" variant="outline" size="lg" role="radio" aria-checked={deadlineKind === k.value}
-              className={cn(deadlineKind === k.value && "border-primary bg-muted font-semibold")}
-              onClick={() => setDeadlineKind(k.value)}>
-              {k.label}
-            </Button>
-          ))}
-        </div>
-        {deadlineKind === "date" && (
-          <div className="grid grid-cols-2 gap-2">
-            <Input type="date" aria-label="마감 날짜" className="h-10" value={date} onChange={(e) => setDate(e.target.value)} />
-            <Input type="time" aria-label="마감 시각 (없으면 비워 두기)" className="h-10" value={time} onChange={(e) => setTime(e.target.value)} />
-          </div>
-        )}
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-location">근무지</Label>
-          <Input id="edit-location" className="h-10" value={location} onChange={(e) => setLocation(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-type">근무 형태</Label>
-          <Input id="edit-type" className="h-10" value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-size">기업 규모</Label>
-          <Input id="edit-size" className="h-10" value={companySize} onChange={(e) => setCompanySize(e.target.value)} />
-        </div>
-      </div>
-      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-      <div className="flex gap-2">
-        <Button type="submit" size="lg" className="px-5" disabled={saving}>{saving ? "저장 중…" : "저장"}</Button>
-        <Button type="button" variant="outline" size="lg" className="px-4" onClick={onCancel}>취소</Button>
-      </div>
-    </form>
     </Card>
   );
 }
@@ -237,18 +132,20 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
       </PageTitle>
 
       {editing ? (
-        <EditForm
-          posting={posting}
-          onCancel={() => setEditing(false)}
-          onSave={async (next) => {
-            const result = await updatePosting(posting.id, next);
-            if (!result.ok) return result.message;
-            setPosting(next);
-            setEditing(false);
-            toast("고친 내용을 저장했어요");
-            return null;
-          }}
-        />
+        <Card className="px-4 md:px-6">
+          <PostingEditForm
+            posting={posting}
+            onCancel={() => setEditing(false)}
+            onSave={async (next) => {
+              const result = await updatePosting(posting.id, next);
+              if (!result.ok) return result.message;
+              setPosting(next);
+              setEditing(false);
+              toast("고친 내용을 저장했어요");
+              return null;
+            }}
+          />
+        </Card>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-4">
