@@ -32,22 +32,53 @@ const decodeEntities = (s: string) =>
     .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
 
-// HTML → 줄 단위 글. 표의 제목 칸(th·dt) 뒤에는 ":" 를 붙여 "항목 : 값" 한 줄이 되게 한다
+const cellText = (html: string) =>
+  decodeEntities(html.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+const isLabel = (text: string) => text.length <= 12 && Object.values(LABELS).some((re) => re.test(text));
+
+// 표를 "항목 : 값" 줄로. 가로 표(맨 윗줄이 항목 이름, 다음 줄이 값)와 세로 표(왼쪽 칸이 항목 이름) 둘 다
+function tableLines(html: string) {
+  const lines: string[] = [];
+  for (const [, table] of html.matchAll(/<table[\s\S]*?>([\s\S]*?)<\/table>/gi)) {
+    const rows = [...table.matchAll(/<tr[\s\S]*?>([\s\S]*?)<\/tr>/gi)].map(([, row]) =>
+      [...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map(([, cell]) => cellText(cell)),
+    );
+    rows.forEach((cells, r) => {
+      if (cells.length === 2 && isLabel(cells[0]) && cells[1]) lines.push(`${cells[0]} : ${cells[1]}`);
+      const next = rows[r + 1];
+      if (cells.length >= 2 && next?.length === cells.length && cells.some(isLabel)) {
+        cells.forEach((cell, i) => {
+          if (isLabel(cell) && next[i] && !isLabel(next[i])) lines.push(`${cell} : ${next[i]}`);
+        });
+      }
+    });
+  }
+  return lines;
+}
+
+// HTML → 줄 단위 글. 표에서 뽑은 "항목 : 값" 줄을 앞에 둔다. 표의 제목 칸(th·dt) 뒤에는 ":" 를 붙인다
 export function htmlToLines(html: string) {
-  return decodeEntities(
+  const body = decodeEntities(
     html
       .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ")
       .replace(/<\/(th|dt)>/gi, " : ")
       .replace(/<br\s*\/?>|<\/(p|div|li|tr|dd|h\d|section|table|ul|ol)>/gi, "\n")
       .replace(/<[^>]+>/g, " "),
   )
-    .replace(/[•·∙◦▪■□○●►▶✔✓]\s/g, "\n")
-    .replace(/[ \t ]+/g, " ")
-    .split("\n")
+    .replace(/[•·∙◦▪■□○●►▶▷◆◇※✔✓]\s|ㆍ/g, "\n")
+    .replace(/[ \t\u00a0]+/g, " ");
+  return [...tableLines(html), ...body.split("\n")]
     .map((l) => l.trim())
     .filter(Boolean)
     .join("\n");
 }
+
+// 한 줄에 다음 항목이 이어 붙어 있으면 거기서 자른다 ("이력서 및 자기소개서 접수방법/기간 …")
+const NEXT_SECTION = /\s(접수\s*방법|접수\s*기간|문의|기타\s*사항|유의\s*사항|우대\s*사항|자격\s*요건|근무\s*조건|복리\s*후생|급여|모집\s*인원|전형\s*절차|제출\s*서류|근무\s*지|근무\s*형태|고용\s*형태)/;
+const cutAtNextSection = (value: string) => {
+  const m = NEXT_SECTION.exec(value);
+  return (m ? value.slice(0, m.index) : value).trim();
+};
 
 // 줄 앞의 이모지·기호·번호 떼기
 const stripLead = (line: string) => line.replace(/^[^\p{L}\p{N}]+/u, "").replace(/^\d+\.\s*/, "");
@@ -59,7 +90,7 @@ function findLabelValue(lines: string[], key: Key) {
     // "근무지는 …" 처럼 항목 이름 뒤에 글자가 바로 붙으면 항목이 아니라 문장이다
     if (!m || /^[가-힣]/.test(line.slice(m[0].length))) continue;
     const rest = line.slice(m[0].length).replace(/^\s*(및\s*방법)?\s*[:：\-]?\s*/, "").trim();
-    if (rest) return rest;
+    if (rest) return cutAtNextSection(rest);
     // 전형 절차·제출 서류만: 항목 이름 한 줄 뒤에 여러 줄로 이어지는 경우, 다음 항목이 나오기 전 6줄까지
     if (key !== "steps" && key !== "requiredDocs") continue;
     const following: string[] = [];
@@ -68,13 +99,15 @@ function findLabelValue(lines: string[], key: Key) {
       if (!n || Object.values(LABELS).some((re) => re.test(n)) || /[:：]/.test(n)) break;
       following.push(n);
     }
-    if (following.length) return following.join(" → ");
+    if (following.length) return cutAtNextSection(following.join(" → "));
   }
   return null;
 }
 
 function employmentFrom(value: string) {
-  const found = EMPLOYMENT_WORDS.filter((w) => value.includes(w));
+  // 괄호 안 설명("3개월 후 정규직 전환 검토")은 고용 형태가 아니다
+  const main = value.replace(/\([^)]*\)/g, " ");
+  const found = EMPLOYMENT_WORDS.filter((w) => main.includes(w));
   const unique = found.filter((w) => !found.some((o) => o !== w && o.includes(w)));
   return unique.length ? unique.map((w) => (w === "파견직" ? "파견" : w)).join(", ") : null;
 }
