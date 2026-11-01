@@ -68,7 +68,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col overflow-x-hidden bg-background">
       {/* 머리 */}
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5">
-        <span className="text-lg font-bold tracking-tight">이름 미정</span>
+        <span className="text-lg font-bold tracking-tight">pacemate</span>
         <Badge variant="warning">연습용 서비스</Badge>
       </header>
 
@@ -232,7 +232,7 @@ export default function Home() {
                 body: "그 사이트 공고만 모이고, 인스타그램 · 커뮤니티에서 본 공고는 따로 챙겨야 해요.",
               },
               {
-                label: "이름 미정",
+                label: "pacemate",
                 body: "어디서 본 공고든 링크 · 글 · 캡처로 넣으면 정리되고, 전형 단계까지 한곳에서 봐요.",
                 highlight: true,
               },
@@ -292,7 +292,7 @@ export default function Home() {
       {/* 푸터 */}
       <footer className="mx-auto w-full max-w-6xl px-5 py-8">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:justify-between">
-          <span className="font-semibold text-foreground">이름 미정 © 2026</span>
+          <span className="font-semibold text-foreground">pacemate © 2026</span>
           <span>Built with Claude Code · AI 프로덕트 빌더 클럽 3기</span>
         </div>
       </footer>

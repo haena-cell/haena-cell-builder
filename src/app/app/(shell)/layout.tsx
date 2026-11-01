@@ -11,7 +11,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-full flex-1 bg-background">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 px-4 py-6 lg:flex">
         <Link href="/app" className="px-4 text-lg font-bold tracking-tight">
-          이름 미정
+          pacemate
         </Link>
         <Button size="lg" className="h-11" asChild>
           <Link href="/app/new">
@@ -32,7 +32,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between bg-background/85 px-4 backdrop-blur lg:hidden">
           <Link href="/app" className="text-base font-bold tracking-tight">
-            이름 미정
+            pacemate
           </Link>
           <Suspense fallback={<div className="size-10 rounded-full bg-muted" />}>
             <UserMenu />
