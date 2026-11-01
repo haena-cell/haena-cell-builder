@@ -82,7 +82,7 @@ export async function aiExtract(source: AiSource): Promise<AiPosting | null> {
   } catch (error) {
     // 한도 도달·키 오류·시간 초과 등: 키워드 결과로 계속 간다
     if (error instanceof Anthropic.APIError) console.error(`AI 정리 실패 ${error.status}: ${error.message.slice(0, 200)}`);
-    else console.error("AI 정리 실패");
+    else console.error(`AI 정리 실패 ${error instanceof Error ? `${error.name}: ${error.message.slice(0, 200)}` : ""}`);
     return null;
   }
 }
