@@ -104,6 +104,12 @@ export function NewPostingForm() {
           setError("정리 결과를 옮기지 못했어요. 다시 시도해 주세요.");
           return;
         }
+        // 이 화면은 떠나도 숨겨진 채 남는다(Activity) → 다음 공고를 넣을 때 빈 칸에서 시작하도록 비운다
+        setUrl("");
+        setText("");
+        setImage(null);
+        setFallbackMessage(null);
+        setMode("link");
         router.push("/app/new/review");
         return;
       }

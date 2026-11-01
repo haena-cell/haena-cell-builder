@@ -14,6 +14,7 @@ export type Draft = {
   isExample: boolean;
   source: DraftSource;
   hint?: string;
+  id?: string; // 정리할 때마다 새 번호 — 확인 화면이 이전 결과를 들고 있지 않게 (Activity, 아래 참고)
 };
 
 const DRAFT_KEY = "practice:draft";
@@ -44,6 +45,6 @@ function remove(key: string) {
   }
 }
 
-export const saveDraft = (draft: Draft) => write(DRAFT_KEY, draft);
+export const saveDraft = (draft: Draft) => write(DRAFT_KEY, { ...draft, id: crypto.randomUUID() });
 export const loadDraft = () => read<Draft>(DRAFT_KEY);
 export const clearDraft = () => remove(DRAFT_KEY);

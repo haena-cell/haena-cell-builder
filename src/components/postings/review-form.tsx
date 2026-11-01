@@ -427,5 +427,6 @@ export function ReviewForm() {
       </Card>
     );
   }
-  return <ReviewFormInner draft={draft} />;
+  // 화면을 떠나도 Next 가 이 화면을 숨겨 두기만 해서(Activity) 이전 결과가 남는다 → 새 정리 결과면 처음부터 다시 그린다
+  return <ReviewFormInner key={draft.id ?? "draft"} draft={draft} />;
 }
