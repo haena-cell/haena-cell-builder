@@ -35,6 +35,7 @@ export type Posting = {
   companySize: string | null;
   requiredDocs: string[];
   sourceUrl: string | null;
+  sourceText: string | null; // 글 붙여넣기 원문 (D-30)
   steps: PostingStep[];
   prepItems: PrepItem[];
   isSample: boolean;

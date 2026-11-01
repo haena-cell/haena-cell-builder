@@ -31,6 +31,7 @@ export type NewPosting = PostingFields & {
   steps: string[];
   sourceKind: "link" | "text" | "image";
   sourceUrl: string | null;
+  sourceText?: string | null; // 글 붙여넣기 원문 (D-30)
   aiRaw: ExtractedPosting | null;
 };
 
@@ -76,6 +77,7 @@ export async function createPosting(input: NewPosting): Promise<ActionResult<{ i
       source_kind: input.sourceKind,
       source_url: input.sourceKind === "link" ? clean(input.sourceUrl) : null,
       source_url_normalized: input.sourceKind === "link" ? normalizeSourceUrl(input.sourceUrl) : null,
+      source_text: input.sourceKind === "text" ? input.sourceText?.slice(0, 20_000) || null : null,
       ai_raw: (input.aiRaw ?? null) as Json,
       confirmed: { ...row, steps } as Json,
     })

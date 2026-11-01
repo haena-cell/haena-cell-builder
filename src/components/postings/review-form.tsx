@@ -178,6 +178,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         steps,
         sourceKind: draft.source.kind,
         sourceUrl: draft.source.kind === "link" ? draft.source.url : null,
+        sourceText: draft.source.kind === "text" ? draft.source.text : null,
         aiRaw: draft.posting,
       });
       if (!result.ok) {
@@ -242,7 +243,12 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
                   <ExternalLink className="size-3.5 shrink-0" />
                 </a>
               )}
-              {draft.source.kind === "text" && <p className="text-muted-foreground">붙여넣은 글은 저장하지 않아요.</p>}
+              {draft.source.kind === "text" && (
+                <>
+                  <p className="mb-2 text-xs text-muted-foreground">[저장]하면 이 글도 원문으로 함께 저장돼요. 나만 볼 수 있어요.</p>
+                  <p className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-xl bg-card p-3 text-sm leading-relaxed">{draft.source.text}</p>
+                </>
+              )}
               {draft.source.kind === "image" && (
                 // 기기 안에서만 보여 주는 미리보기
                 // eslint-disable-next-line @next/next/no-img-element

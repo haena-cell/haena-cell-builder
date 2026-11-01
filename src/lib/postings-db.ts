@@ -28,6 +28,7 @@ function toPosting(row: Row): Posting {
     companySize: row.company_size,
     requiredDocs: row.required_docs,
     sourceUrl: row.source_url,
+    sourceText: row.source_text,
     steps: [...row.posting_steps]
       .sort(byPosition)
       .map((s) => ({ id: s.id, name: s.name, completedAt: s.completed_at })),

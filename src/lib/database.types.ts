@@ -95,6 +95,7 @@ export type Database = {
           priority: string
           required_docs: string[]
           source_kind: string
+          source_text: string | null
           source_url: string | null
           source_url_normalized: string | null
           updated_at: string
@@ -117,6 +118,7 @@ export type Database = {
           priority?: string
           required_docs?: string[]
           source_kind: string
+          source_text?: string | null
           source_url?: string | null
           source_url_normalized?: string | null
           updated_at?: string
@@ -139,6 +141,7 @@ export type Database = {
           priority?: string
           required_docs?: string[]
           source_kind?: string
+          source_text?: string | null
           source_url?: string | null
           source_url_normalized?: string | null
           updated_at?: string

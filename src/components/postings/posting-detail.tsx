@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Check, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
+import { CalendarPlus, Check, ChevronDown, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -348,11 +348,22 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
                       <span className="truncate">{posting.sourceUrl}</span>
                       <ExternalLink className="size-3.5 shrink-0" />
                     </a>
+                  ) : posting.sourceText ? (
+                    "붙여넣은 글 (아래에서 펼쳐 보기)"
                   ) : (
                     "—"
                   )}
                 </dd>
               </dl>
+              {posting.sourceText && (
+                <details className="group rounded-2xl bg-muted">
+                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm font-medium">
+                    붙여넣은 원문 보기
+                    <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="max-h-96 overflow-y-auto px-4 pb-4 text-sm leading-relaxed whitespace-pre-wrap">{posting.sourceText}</p>
+                </details>
+              )}
             </Section>
           </div>
 

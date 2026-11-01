@@ -6,7 +6,7 @@ import type { ExtractedPosting } from "@/lib/extract-posting";
 
 export type DraftSource =
   | { kind: "link"; url: string }
-  | { kind: "text" }
+  | { kind: "text"; text: string }
   | { kind: "image"; previewDataUrl: string };
 
 export type Draft = {

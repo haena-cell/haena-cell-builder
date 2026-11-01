@@ -99,7 +99,7 @@ export function NewPostingForm() {
             ? { kind: "link", url: input.url }
             : input.kind === "image"
               ? { kind: "image", previewDataUrl: input.dataUrl }
-              : { kind: "text" };
+              : { kind: "text", text: input.text };
         if (!saveDraft({ posting: data.posting, isExample: data.isExample, source, hint: data.hint })) {
           setError("정리 결과를 옮기지 못했어요. 다시 시도해 주세요.");
           return;
@@ -266,7 +266,7 @@ export function NewPostingForm() {
 
       <p className="flex items-start gap-1.5 px-1 text-xs text-muted-foreground">
         <Lock className="mt-0.5 size-3.5 shrink-0" />
-        공고 글 속 전화번호·이메일은 지우고 AI에 보내요. 원본 글과 캡처는 저장하지 않아요.
+        공고 글 속 전화번호·이메일은 지우고 AI에 보내요. 붙여넣은 글은 원문으로 저장돼 나만 볼 수 있고, 캡처는 저장하지 않아요.
       </p>
     </div>
   );
