@@ -177,6 +177,12 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         </div>
         {draft.isExample && <Badge variant="warning" className="shrink-0">연습용 예시</Badge>}
       </div>
+      {draft.hint && (
+        <p className="rounded-xl bg-info px-3.5 py-2.5 text-sm text-info-foreground" role="status">
+          {draft.hint}{" "}
+          <Link href="/app/new" className="font-semibold underline underline-offset-2">캡처 올리러 가기</Link>
+        </p>
+      )}
 
       {/* 원본 미리보기: 휴대폰은 접어 둔다 */}
       <section className="rounded-xl border border-border">

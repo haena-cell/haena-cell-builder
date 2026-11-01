@@ -14,7 +14,7 @@ const USER_AGENT =
 const DEFAULT_STEPS: string[] = ["서류 제출", "면접", "최종 결과"];
 
 export type LinkReadResult =
-  | { status: "ok"; posting: ExtractedPosting }
+  | { status: "ok"; posting: ExtractedPosting; body: { text: string; imageUrls: string[] } }
   | { status: "unreadable"; message: string };
 
 const UNREADABLE = "이 링크는 바로 읽지 못했어요.";
@@ -254,15 +254,31 @@ function fromDescription(html: string): Draft | null {
   return { posting, deadlineUnsure: deadline === null || !due };
 }
 
-// 공고 본문 글: 정리 정보 안의 본문(description) → 사람인은 같은 공고의 본문 페이지 → 없으면 페이지 전체
-async function bodyLines(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
-  if (job && typeof job.description === "string" && job.description.length > 50) return htmlToLines(job.description);
+// 본문 속 이미지 주소 (본문이 이미지인 공고를 AI 가 읽도록, D-29). 아이콘·로고처럼 보이는 것은 뺀다
+function bodyImages(html: string, base: URL) {
+  const urls = [...html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
+    .map(([, src]) => {
+      try {
+        return new URL(decodeEntities(src), base);
+      } catch {
+        return null;
+      }
+    })
+    .filter((u): u is URL => !!u && u.protocol === "https:" && !/\.(gif|svg)(\?|$)/i.test(u.pathname) && !/logo|icon|btn|banner|blank/i.test(u.pathname));
+  return [...new Set(urls.map((u) => u.toString()))];
+}
+
+// 공고 본문: 정리 정보 안의 본문(description) → 사람인은 같은 공고의 본문 페이지 → 없으면 페이지 전체
+async function readBody(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
+  if (job && typeof job.description === "string" && job.description.length > 50) {
+    return { text: htmlToLines(job.description), imageUrls: bodyImages(job.description, pageUrl) };
+  }
   const recIdx = pageUrl.hostname.endsWith("saramin.co.kr") ? pageUrl.searchParams.get("rec_idx") : null;
   if (recIdx && /^\d+$/.test(recIdx)) {
     const detail = await fetchPage(`https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=${recIdx}`).catch(() => null);
-    if (detail) return htmlToLines(detail.html);
+    if (detail) return { text: htmlToLines(detail.html), imageUrls: bodyImages(detail.html, detail.finalUrl) };
   }
-  return htmlToLines(html);
+  return { text: htmlToLines(html), imageUrls: [] };
 }
 
 // 본문의 "항목 : 값" 줄로 빈 칸 채우기. 정리 정보에 있는 값이 먼저다
@@ -308,6 +324,7 @@ export async function readPostingLink(url: string): Promise<LinkReadResult> {
   const draft = job ? fromJobPosting(job, page.html) : fromDescription(page.html);
   // 기업명도 직무도 못 찾았으면 읽은 것으로 보지 않는다
   if (!draft || (!draft.posting.company && !draft.posting.jobTitle)) return { status: "unreadable", message: UNREADABLE };
-  const filled = fillFromKeywords(draft, await bodyLines(page.html, job, page.finalUrl));
-  return { status: "ok", posting: withUnsure(filled) };
+  const body = await readBody(page.html, job, page.finalUrl);
+  const filled = fillFromKeywords(draft, body.text);
+  return { status: "ok", posting: withUnsure(filled), body };
 }

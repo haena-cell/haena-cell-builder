@@ -99,7 +99,7 @@ export function NewPostingForm() {
             : input.kind === "image"
               ? { kind: "image", previewDataUrl: input.dataUrl }
               : { kind: "text" };
-        if (!saveDraft({ posting: data.posting, isExample: data.isExample, source })) {
+        if (!saveDraft({ posting: data.posting, isExample: data.isExample, source, hint: data.hint })) {
           setError("정리 결과를 옮기지 못했어요. 다시 시도해 주세요.");
           return;
         }

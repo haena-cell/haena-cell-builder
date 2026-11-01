@@ -13,6 +13,7 @@ export type Draft = {
   posting: ExtractedPosting;
   isExample: boolean;
   source: DraftSource;
+  hint?: string;
 };
 
 const DRAFT_KEY = "practice:draft";

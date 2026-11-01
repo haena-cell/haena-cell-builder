@@ -16,8 +16,8 @@ export default function NewPostingPage() {
         back={{ href: "/app", label: "홈" }}
       />
       <Card className="gap-6 px-4 md:px-6">
-        <p className="rounded-xl bg-warning px-3.5 py-2.5 text-xs text-warning-foreground">
-          채용 사이트 링크는 페이지에 적힌 채용 정보를 실제로 읽어요(AI 없이, 비용 없음). 글 붙여넣기·캡처는 아직 연습용 예시 결과를 보여 드려요.
+        <p className="rounded-xl bg-info px-3.5 py-2.5 text-xs text-info-foreground">
+          링크는 페이지에 적힌 채용 정보를 먼저 읽고, 빈 칸은 AI(Claude)가 채워요. 글·캡처도 AI가 정리해요. 공고 글 속 전화번호·이메일은 지우고 보내고, 원본은 저장하지 않아요.
         </p>
         <NewPostingForm />
       </Card>
