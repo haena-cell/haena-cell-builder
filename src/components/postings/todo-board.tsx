@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { DueChip } from "@/components/postings/prep-todos";
 import { Segmented } from "@/components/postings/segmented";
-import { setPrepDone, updateSubtask } from "@/lib/posting-actions";
+import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { currentStepIndex, kstDateKey, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +51,8 @@ function Check({ row, onToggle }: { row: Row; onToggle: (row: Row) => void }) {
 
 export function TodoBoard({ initialPostings, today }: { initialPostings: Posting[]; today: string }) {
   const [postings, setPostings] = useState(initialPostings);
+  const href = useAppHref();
+  const { setPrepDone, updateSubtask } = usePostingActions();
   const [sort, setSort] = useState<Sort>("posting");
   const [showDone, setShowDone] = useState(false);
 
@@ -170,7 +172,7 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
             {total === 0 ? "공고 상세의 준비 항목에서 할 일을 추가해 보세요" : "남은 할 일이 없어요"}
           </p>
           <Button variant="outline" size="lg" asChild>
-            <Link href="/app/postings">공고 목록으로</Link>
+            <Link href={href("/app/postings")}>공고 목록으로</Link>
           </Button>
         </Card>
       ) : sort === "posting" ? (
@@ -178,7 +180,7 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
           {groups.map(({ posting, rows }) => (
             <Card key={posting.id} className="gap-3 px-3 md:px-6" aria-label={posting.company}>
               <Link
-                href={`/app/postings/${posting.id}`}
+                href={href(`/app/postings/${posting.id}`)}
                 className="flex items-center justify-between gap-3 rounded-2xl px-1 hover:opacity-70"
               >
                 <div className="min-w-0">
@@ -212,7 +214,7 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
                 <Check row={row} onToggle={toggle} />
                 <div className="min-w-0 flex-1">
                   <p className={cn("text-sm", row.done && "text-muted-foreground line-through")}>{row.label}</p>
-                  <Link href={`/app/postings/${row.posting.id}`} className="block truncate text-xs text-muted-foreground hover:underline">
+                  <Link href={href(`/app/postings/${row.posting.id}`)} className="block truncate text-xs text-muted-foreground hover:underline">
                     {row.posting.company}
                     {row.parentLabel && ` · ${row.parentLabel}`}
                   </Link>

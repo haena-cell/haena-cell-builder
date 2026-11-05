@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { PageTitle } from "@/components/postings/page-title";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { PostingEditForm } from "@/components/postings/posting-edit-form";
@@ -22,12 +23,6 @@ import {
   withCurrentStep,
   type Posting,
 } from "@/lib/postings";
-import {
-  deletePosting,
-  setCurrentStep,
-  setStepCompleted as setStepCompletedAction,
-  updatePosting,
-} from "@/lib/posting-actions";
 import { cn } from "@/lib/utils";
 
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
@@ -44,6 +39,8 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 
 export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Posting; nowIso: string }) {
   const router = useRouter();
+  const href = useAppHref();
+  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePosting } = usePostingActions();
   const [posting, setPosting] = useState(initialPosting);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -111,7 +108,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
       return toast.error(result.message);
     }
     toast(`${posting.company} 공고를 지웠어요`);
-    router.push("/app/postings");
+    router.push(href("/app/postings"));
   }
 
   const current = currentStepIndex(posting.steps);
@@ -124,7 +121,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
   return (
     <div className="flex flex-col gap-4">
       {/* 머리 */}
-      <PageTitle title={posting.company} description={posting.jobTitle} back={{ href: "/app/postings", label: "목록" }}>
+      <PageTitle title={posting.company} description={posting.jobTitle} back={{ href: href("/app/postings"), label: "목록" }}>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
           <DeadlineBadge posting={posting} daysLeft={daysLeftFor(posting, now)} />

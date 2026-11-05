@@ -5,16 +5,8 @@ import { CalendarDays, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  addPrepItem,
-  addSubtask,
-  deletePrepItem,
-  deleteSubtask,
-  setPrepDone,
-  updatePrepItem,
-  updateSubtask,
-  type ActionResult,
-} from "@/lib/posting-actions";
+import type { ActionResult } from "@/lib/posting-actions";
+import { usePostingActions } from "@/components/postings/demo-context";
 import { daysToDate, formatDueDate, type PrepItem, type Subtask } from "@/lib/postings";
 import { cn } from "@/lib/utils";
 
@@ -138,6 +130,7 @@ export function PrepTodos({
   today: string;
   onItemsChange: (update: (items: Items) => Items) => void;
 }) {
+  const { addPrepItem, addSubtask, deletePrepItem, deleteSubtask, setPrepDone, updatePrepItem, updateSubtask } = usePostingActions();
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [renaming, setRenaming] = useState<string | null>(null);
 

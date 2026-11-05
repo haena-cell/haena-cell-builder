@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useAppHref } from "@/components/postings/demo-context";
 import { DateBlock, DeadlineBadge } from "@/components/postings/posting-card";
 import { cn } from "@/lib/utils";
 import { kstDateKey, type Posting } from "@/lib/postings";
@@ -229,6 +230,7 @@ export function PostingCalendar({ postings, today }: { postings: Posting[]; toda
 }
 
 function PostingRows({ postings, today }: { postings: Posting[]; today: string }) {
+  const href = useAppHref();
   return (
     <ul className="flex flex-col gap-2">
       {postings.map((posting) => {
@@ -236,7 +238,7 @@ function PostingRows({ postings, today }: { postings: Posting[]; today: string }
         return (
           <li key={posting.id}>
             <Link
-              href={`/app/postings/${posting.id}`}
+              href={href(`/app/postings/${posting.id}`)}
               className="flex items-center gap-3 rounded-2xl border border-border p-3 transition-colors hover:bg-muted"
             >
               <div className="flex w-12 shrink-0 flex-col items-center border-r border-border pr-3">

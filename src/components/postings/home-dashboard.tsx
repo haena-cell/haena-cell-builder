@@ -9,7 +9,7 @@ import { DateBlock, DeadlineBadge } from "@/components/postings/posting-card";
 import { deadlineKey, formatDay, isUrgent, monthCells, WEEKDAYS } from "@/components/postings/posting-calendar";
 import { DueChip } from "@/components/postings/prep-todos";
 import { StepDots } from "@/components/postings/step-bar";
-import { setPrepDone, updateSubtask } from "@/lib/posting-actions";
+import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { currentStepIndex, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,8 @@ type TodoRow = { key: string; kind: "item" | "sub"; id: string; label: string; d
 
 export function HomeDashboard({ initialPostings, today }: { initialPostings: Posting[]; today: string }) {
   const [postings, setPostings] = useState(initialPostings);
+  const href = useAppHref();
+  const { setPrepDone, updateSubtask } = usePostingActions();
   const active = postings.filter((p) => currentStepIndex(p.steps) !== -1);
   const daysOf = (p: Posting) => {
     const key = deadlineKey(p);
@@ -117,7 +119,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
   return (
     <div className="flex flex-col gap-4">
       <Card className="gap-4 px-3 md:px-6" aria-label="마감 임박">
-        <PanelHead title="마감 임박" href="/app/postings" />
+        <PanelHead title="마감 임박" href={href("/app/postings")} />
         {upcoming.length === 0 ? (
           <p className="rounded-2xl bg-muted px-4 py-4 text-sm text-muted-foreground">마감을 앞둔 공고가 없어요</p>
         ) : (
@@ -127,7 +129,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
               return (
                 <li key={p.id}>
                   <Link
-                    href={`/app/postings/${p.id}`}
+                    href={href(`/app/postings/${p.id}`)}
                     className="flex items-stretch gap-3 rounded-[20px] border border-border p-3 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex w-12 shrink-0 flex-col items-center justify-center border-r border-border pr-3">
@@ -156,7 +158,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card className="gap-3 px-3 md:px-6" aria-label="이번 달 달력">
-          <PanelHead title={<>{month}월 <span className="text-muted-foreground">{year}</span></>} href="/app/calendar" />
+          <PanelHead title={<>{month}월 <span className="text-muted-foreground">{year}</span></>} href={href("/app/calendar")} />
           <div className="grid grid-cols-7 gap-1">
             {WEEKDAYS.map((w, i) => (
               <span key={w} className={cn("py-1 text-center text-[11px] text-muted-foreground", i === 0 && "text-destructive")}>
@@ -216,7 +218,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                 {selectedPostings.map((p) => (
                   <li key={p.id}>
                     <Link
-                      href={`/app/postings/${p.id}`}
+                      href={href(`/app/postings/${p.id}`)}
                       className="flex items-center gap-2.5 rounded-2xl border border-border px-3 py-2.5 transition-colors hover:bg-muted/50"
                     >
                       <span className="shrink-0 text-xs text-muted-foreground">마감</span>
@@ -239,7 +241,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                     />
                     <span className="min-w-0 flex-1">
                       <span className={cn("block truncate text-sm", row.done && "text-muted-foreground line-through")}>{row.label}</span>
-                      <Link href={`/app/postings/${row.posting.id}`} className="block truncate text-xs text-muted-foreground hover:underline">
+                      <Link href={href(`/app/postings/${row.posting.id}`)} className="block truncate text-xs text-muted-foreground hover:underline">
                         {row.posting.company}
                       </Link>
                     </span>
@@ -252,7 +254,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
         </Card>
 
         <Card className="gap-3 px-3 md:px-6" aria-label="할 일">
-          <PanelHead title="할 일" href="/app/todos">
+          <PanelHead title="할 일" href={href("/app/todos")}>
             {remaining > 0 && <span className="rounded-full bg-secondary px-2 text-xs font-medium tabular-nums">{remaining}</span>}
           </PanelHead>
           {shownTodos.length === 0 ? (
@@ -270,7 +272,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                   />
                   <div className="min-w-0 flex-1">
                     <p className={cn("truncate text-sm", row.done && "text-muted-foreground line-through")}>{row.label}</p>
-                    <Link href={`/app/postings/${row.posting.id}`} className="block truncate text-xs text-muted-foreground hover:underline">
+                    <Link href={href(`/app/postings/${row.posting.id}`)} className="block truncate text-xs text-muted-foreground hover:underline">
                       {row.posting.company}
                     </Link>
                   </div>

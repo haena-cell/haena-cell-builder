@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { GoogleLoginButton } from "@/components/auth/google-login-button";
+import { DemoButton } from "@/components/start-button";
 
 export const metadata: Metadata = {
   title: "로그인",
@@ -19,6 +20,7 @@ export default function LoginPage() {
         <Suspense fallback={<Button size="lg" className="h-12 w-full text-base" disabled>Google로 계속하기</Button>}>
           <GoogleLoginButton />
         </Suspense>
+        <DemoButton className="-mt-4 h-12 w-full text-base" />
         <p className="text-xs text-muted-foreground">연습용 서비스예요 · 가짜 공고로 먼저 써 보세요</p>
       </Card>
     </main>

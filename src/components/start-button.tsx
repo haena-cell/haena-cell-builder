@@ -9,3 +9,12 @@ export function StartButton({ className }: { className?: string }) {
     </Button>
   );
 }
+
+// 로그인 없이 예시 공고로 둘러보기 (D-34)
+export function DemoButton({ className }: { className?: string }) {
+  return (
+    <Button variant="outline" size="lg" className={className} asChild>
+      <Link href="/demo">로그인 없이 둘러보기</Link>
+    </Button>
+  );
+}

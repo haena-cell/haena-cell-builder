@@ -1,5 +1,5 @@
 import { Reveal } from "@/components/reveal";
-import { StartButton } from "@/components/start-button";
+import { DemoButton, StartButton } from "@/components/start-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,6 +91,7 @@ export default function Home() {
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <StartButton className="h-12 px-8 text-base font-semibold" />
+              <DemoButton className="h-12 px-6 text-base font-semibold" />
               <span className="text-sm text-muted-foreground">
                 Google 계정으로 바로 시작해요
               </span>
@@ -261,9 +262,12 @@ export default function Home() {
               한곳에 모아 보세요
             </h2>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground md:text-lg">
-              연습용 서비스예요. 처음 들어오면 연습용 예시 공고 3개로 먼저 둘러볼 수 있어요.
+              연습용 서비스예요. 로그인 전에 예시 공고로 먼저 둘러볼 수 있어요.
             </p>
-            <StartButton className="mt-10 h-12 px-8 text-base font-semibold" />
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              <StartButton className="h-12 px-8 text-base font-semibold" />
+              <DemoButton className="h-12 px-6 text-base font-semibold" />
+            </div>
           </Reveal>
         </Panel>
 

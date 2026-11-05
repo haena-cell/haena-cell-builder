@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { PostingEditForm } from "@/components/postings/posting-edit-form";
 import { StepDots } from "@/components/postings/step-bar";
@@ -43,7 +44,6 @@ import {
   type Posting,
   type Priority,
 } from "@/lib/postings";
-import { deletePosting, setCurrentStep, setStepCompleted as setStepCompletedAction, updatePosting, updatePostingMeta } from "@/lib/posting-actions";
 import { cn } from "@/lib/utils";
 
 // 공고 목록 표 (D-26): 한 줄에 공고 하나. 상태 탭 + 우선순위·근로형태 걸러 보기, 줄에서 우선순위·근로형태 고르기
@@ -186,6 +186,9 @@ export function PostingList({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const href = useAppHref();
+  const listHref = href("/app/postings");
+  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePosting, updatePostingMeta } = usePostingActions();
   const [postings, setPostings] = useState(initialPostings);
   // 처음 그릴 때는 서버가 센 D-day, 그 뒤에는 브라우저에서 센다
   const [now, setNow] = useState<Date | null>(null);
@@ -206,10 +209,10 @@ export function PostingList({
     if (!justSaved) return;
     setHighlightId(justSaved);
     toast("저장했어요", { id: `saved-${justSaved}` });
-    router.replace("/app/postings", { scroll: false });
+    router.replace(listHref, { scroll: false });
     const timer = setTimeout(() => setHighlightId(null), 3000);
     return () => clearTimeout(timer);
-  }, [searchParams, router]);
+  }, [searchParams, router, listHref]);
 
   const replace = (id: string, change: (p: Posting) => Posting) =>
     setPostings((prev) => prev.map((p) => (p.id === id ? change(p) : p)));
@@ -389,7 +392,7 @@ export function PostingList({
                 {/* 기업 · 직무 (줄 전체를 누르면 상세로) */}
                 <div className="min-w-0">
                   <Link
-                    href={`/app/postings/${posting.id}`}
+                    href={href(`/app/postings/${posting.id}`)}
                     className="block truncate text-sm font-semibold after:absolute after:inset-0"
                   >
                     {posting.company}
