@@ -17,12 +17,13 @@ export type KeywordFields = {
 
 const LABELS = {
   company: /^(회사\s*명|기업\s*명|회사|기업|company)/i,
-  jobTitle: /^(모집\s*직무|채용\s*직무|모집\s*부문|모집\s*분야|채용\s*분야|직무|포지션|job\s*title|position)/i,
+  jobTitle: /^(모집\s*포지션|모집\s*직무|채용\s*직무|모집\s*부문|모집\s*분야|채용\s*분야|직무|포지션|job\s*title|position)/i,
   employmentType: /^(고용\s*형태|고용\s*유형|고용\s*구분|근무\s*형태|근로\s*형태|채용\s*형태|계약\s*형태|employment(\s*type)?)/i,
   location: /^(근무\s*지역|근무\s*지|근무\s*장소|근무\s*위치|근무처|location)/i,
   steps: /^(전형\s*절차|채용\s*절차|전형\s*과정|채용\s*과정|채용\s*프로세스|전형\s*방법|선발\s*절차|hiring\s*process)/i,
   requiredDocs: /^(제출\s*서류|제출\s*자료|필수\s*서류|필요\s*서류|지원\s*서류|구비\s*서류|제출)/,
   deadline: /^(접수\s*마감일?|지원\s*마감일?|서류\s*마감일?|마감\s*일시|마감\s*기한|마감\s*일|마감|deadline)/i,
+  workplace: /^근무\s*환경/, // 지역 이름으로 시작하는 값일 때만 근무지로 쓴다
   period: /^(접수\s*기간|모집\s*기간|지원\s*기간|서류\s*접수)/,
   address: /^(회사\s*주소|사무실\s*주소|주소)/,
 };
@@ -141,6 +142,11 @@ function findLabelValue(lines: string[], key: Key, accept: (value: string) => bo
       if (value && accept(value)) return value;
       continue;
     }
+    // "근무위치 / 브렌든 서울 오피스 / 서울시 강남구 …" 처럼 몇 줄 아래에 주소가 있는 경우
+    if (!rest && (key === "location" || key === "workplace")) {
+      const near = lines.slice(i + 1, i + 4).map(stripLead).find((n) => REGION.test(n) && n.length <= 80);
+      if (near && accept(near)) return near;
+    }
     // 항목 이름 한 줄 뒤에 값이 오는 경우. 전형 절차·제출 서류는 여러 줄, 나머지는 한 줄
     const count = key === "steps" ? 10 : key === "requiredDocs" ? 6 : 1;
     const following: string[] = rest ? [rest] : [];
@@ -215,6 +221,7 @@ export function stepsFromRounds(rounds: string) {
 function docsFrom(value: string) {
   const items = value
     .replace(/포토폴리오/g, "포트폴리오")
+    .replace(/\([^)]*\)/g, " ") // "포트폴리오 (PDF, 50MB 이하)" 의 괄호 안은 서류 이름이 아니다
     .split(/\s*(?:,|\/|·|、|및|\+|→|\s와\s)\s*/)
     .map((s) => s.trim())
     .filter(Boolean);
@@ -299,6 +306,10 @@ function fromHeadline(lines: string[]) {
     if (bracket && !LABELS.company.test(bracket[1])) {
       // "[디자인 채용 2차] BX · UI" 처럼 괄호 안이 회사 이름이 아닌 경우가 많다 → 그때는 직무만
       const notCompany = GENERIC_WORD.test(bracket[1]) || /채용|모집|공고|\d\s*차|부문|디자이너|마케터|기획|개발자|매니저|담당|多|복리후생|스펙|급구|우대/.test(bracket[1]);
+      // 첫 줄이 아닌 "[자격 요건]" 같은 줄은 소제목이다
+      if (!bracket[2] && raw !== lines[0]) continue;
+      // "[채용] 오이뮤에서 함께할 동료를 찾습니다" · "[공개 채용]" 은 괄호 뒤가 직무가 아니다 → 아래 문장 규칙으로 넘긴다
+      if (notCompany && (!bracket[2] || /니다[.!]?$/.test(bracket[2]))) continue;
       return { company: notCompany ? null : bareCompany(bracket[1]), jobTitle: tidyHeadline(bracket[2]) || null };
     }
     const sentence = /^(\S+?)에서\s+(.+?)(?:을|를)\s*(?:모집|채용|찾)/.exec(line);
@@ -318,6 +329,36 @@ function fromHeadline(lines: string[]) {
   return { company: null, jobTitle: null };
 }
 
+const JOB_WORD = String.raw`(?:디자이너|개발자|엔지니어|마케터|기획자|매니저|PM|PD|MD|팀원)`;
+const NOT_COMPANY = /^(저희|우리|당사|회사|동료|팀|여러분|고객|브랜드|성장)|디자이너|개발자|마케터/;
+
+// 인스타그램처럼 항목 이름 없이 쓴 글에서 회사·직무 짐작. 항상 확인 칸으로 남긴다
+function fromSentences(lines: string[]) {
+  const head = lines.slice(0, 15).map((raw) => raw.replace(/\uFE0F/g, "").trim());
+  let company: string | null = null;
+  for (const [i, line] of head.entries()) {
+    const found =
+      /^(?:\[[^\]]*\]\s*)?([^\s,.:]{2,15}(?:\s[^\s,.:]{1,8})?)(?:에서|와|과)\s+(?:[\d년월-]+(?:부터)?\s+){0,2}함께/.exec(line)?.[1] ?? // "그리드와 함께 성장할"
+      /^([A-Za-z][\w &.]*?)\s+[–—]\s+.*(?:채용|모집)/.exec(line)?.[1] ?? // "xyz Studio – 브랜드 디자이너 채용"
+      /^\[([^\]]{2,20}?)\s*공개\s*채용\]/.exec(line)?.[1] ?? // "[HuskyFox 공개 채용]"
+      /^[〈<《]?\s*(?:\d{4}\s*)?(\S{2,15})\s+(?:상반기|하반기)/.exec(line)?.[1] ?? // "〈2026 회사 하반기 …〉"
+      /^([A-Za-z][\w &]{1,20})\.?\s+RECRUIT/i.exec(line)?.[1] ?? // "BRENDEN. RECRUIT."
+      // "디블러는 … 에이전시입니다" (여러 줄에 걸쳐도)
+      (/(스튜디오|에이전시|회사|기업|매장|그룹)입니다/.test(head.slice(i, i + 4).join(" ")) ? /^([^\s,.]{2,15})(?:은|는)\s/.exec(line)?.[1] : undefined);
+    if (found && !NOT_COMPANY.test(found) && !GENERIC_WORD.test(found)) {
+      company = bareCompany(found);
+      break;
+    }
+  }
+  const firstMatch = (re: RegExp) => head.map((line) => re.exec(line)?.[1]).find(Boolean) ?? null;
+  const jobTitle =
+    firstMatch(/^\[([^\]]{2,20}?)\s*(?:구인|부문)\]/) ?? // "[그래픽 디자이너 구인]"
+    firstMatch(/(?:상반기|하반기)\s+(.+?)\s*모집/) ?? // "하반기 BX 디자이너 인턴 모집"
+    firstMatch(new RegExp(`^(.{2,30}?${JOB_WORD})(?:\\s*[-–—]\\s*.*)?$`)) ?? // "브랜드 디자이너 - 인턴(전환형)"
+    firstMatch(new RegExp(`((?:\\S+\\s)?\\S*${JOB_WORD})(?:님)?(?:을|를)\\s*(?:찾|모집|채용)`)); // "인턴 디자이너를 찾습니다"
+  return { company, jobTitle };
+}
+
 // 문장 속 근무지: "근무지는 경기 성남시 분당구 판교역로 220 (삼평동, 안랩)이며"
 function locationFromSentence(text: string) {
   const m = /근무\s*(?:지역|지|장소|위치)(?:는|은)\s+([^\n]+?)(?:이며|이고|입니다|에서\s)/.exec(text);
@@ -335,6 +376,7 @@ const tidyLocation = (value: string) =>
     // 인크루트: "서울 > 전지역 외 + 서울 > 전지역"
     .replace(/\s*외\s*\+.*$/, " 외")
     .replace(/\s+>\s+/g, " ")
+    .replace(/\s*(오피스\s*)?출근$/, "")
     .slice(0, 60)
     .trim() || null;
 
@@ -375,14 +417,16 @@ export function readKeywordFields(text: string, now: Date = new Date()): Keyword
   const shortValue = (max: number) => (v: string) => v.length <= max && !/니다[.!]?$/.test(v);
   const companyLabel = findLabelValue(lines, "company", shortValue(30)) ?? emojiValue(lines, "company");
   const titleLabel = findLabelValue(lines, "jobTitle", shortValue(40)) ?? emojiValue(lines, "jobTitle");
-  const headline = fromHeadline(lines);
+  const first = fromHeadline(lines);
+  const sentences = fromSentences(lines);
+  const headline = { company: first.company ?? sentences.company, jobTitle: first.jobTitle ?? sentences.jobTitle };
   const guessed: KeywordFields["guessed"] = [];
   if (!companyLabel && headline.company) guessed.push("company");
   if (!titleLabel && headline.jobTitle) guessed.push("jobTitle");
 
   const employment = findLabelValue(lines, "employmentType", (v) => employmentFrom(v) !== null);
   // 같은 항목이 여럿이면 지역 이름으로 시작하는 값을 먼저 쓴다
-  const location = findLabelValue(lines, "location", (v) => REGION.test(v)) ?? findLabelValue(lines, "location") ?? emojiValue(lines, "location") ?? locationFromSentence(body);
+  const location = findLabelValue(lines, "location", (v) => REGION.test(v)) ?? findLabelValue(lines, "location") ?? emojiValue(lines, "location") ?? locationFromSentence(body) ?? findLabelValue(lines, "workplace", (v) => REGION.test(v));
   const address = location ?? findLabelValue(lines, "address", (v) => REGION.test(v));
   const steps = findLabelValue(lines, "steps", (v) => stepsFrom(v).length >= 2);
   const docs = findLabelValue(lines, "requiredDocs", (v) => docsFrom(v).length > 0);
