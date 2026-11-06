@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BrandName } from "@/components/brand";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Eye, LogIn, Plus } from "lucide-react";
@@ -9,7 +10,7 @@ import { MobileNav, SideNav } from "@/components/postings/app-nav";
 import { DemoProvider } from "@/components/postings/demo-context";
 
 export const metadata: Metadata = {
-  title: { default: "둘러보기", template: "%s (둘러보기) · pacemate" },
+  title: { default: "둘러보기", template: "%s (둘러보기) · Pacemate" },
 };
 
 // 로그인 없이 둘러보기 (D-34): 앱과 같은 틀. 공고 넣기·시작하기는 로그인 화면으로 간다
@@ -19,8 +20,8 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
       <div className="flex min-h-full flex-1 bg-background">
         <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 px-4 py-6 lg:flex">
           <div className="flex items-center gap-2 px-4">
-            <Link href="/" className="text-lg font-bold tracking-tight">
-              pacemate
+            <Link href="/">
+              <BrandName />
             </Link>
             <BetaBadge />
           </div>
@@ -47,8 +48,8 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between bg-background/85 px-4 backdrop-blur lg:hidden">
             <div className="flex items-center gap-2">
-              <Link href="/" className="text-base font-bold tracking-tight">
-                pacemate
+              <Link href="/">
+                <BrandName size="sm" />
               </Link>
               <BetaBadge />
             </div>

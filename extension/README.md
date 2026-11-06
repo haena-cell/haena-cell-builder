@@ -1,24 +1,24 @@
-# pacemate 크롬 확장 프로그램 (D-33)
+# Pacemate 크롬 확장 프로그램 (D-33)
 
-보고 있는 채용 공고 화면에서 아이콘을 누르면, 그 화면의 글(이미지 공고면 화면 캡처)과 링크를 pacemate로 보내 정리 결과 화면을 열어요.
+보고 있는 채용 공고 화면에서 아이콘을 누르면, 그 화면의 글(이미지 공고면 화면 캡처)과 링크를 Pacemate로 보내 정리 결과 화면을 열어요.
 
 ## 설치 (개발자 모드, 무료)
 1. 크롬 주소창에 `chrome://extensions` 를 입력해 열어요.
 2. 오른쪽 위 **개발자 모드**를 켜요.
 3. **압축해제된 확장 프로그램을 로드합니다**를 눌러요.
 4. 이 `extension` 폴더(`1018_01/extension`)를 골라요.
-5. 크롬 오른쪽 위 퍼즐 모양 아이콘 → pacemate 옆 **고정(핀)** 을 누르면 아이콘이 항상 보여요.
+5. 크롬 오른쪽 위 퍼즐 모양 아이콘 → Pacemate 옆 **고정(핀)** 을 누르면 아이콘이 항상 보여요.
 
 ## 쓰는 법
-1. 크롬에서 pacemate(https://haena-cell-builder.vercel.app)에 로그인해 둬요.
-2. 채용 공고 화면(사람인·잡코리아·인스타그램 등)을 열고 pacemate 아이콘을 눌러요.
-3. 새 탭에 pacemate가 열리고 정리가 끝나면 확인 화면이 나와요. 노란 칸만 확인하고 [저장].
+1. 크롬에서 Pacemate(https://haena-cell-builder.vercel.app)에 로그인해 둬요.
+2. 채용 공고 화면(사람인·잡코리아·인스타그램 등)을 열고 Pacemate 아이콘을 눌러요.
+3. 새 탭에 Pacemate가 열리고 정리가 끝나면 확인 화면이 나와요. 노란 칸만 확인하고 [저장].
 
 ## 읽는 것과 보내는 곳
 - 아이콘을 **누른 탭 하나만** 읽어요(activeTab). 다른 탭·방문 기록은 읽지 않아요.
-- 보내는 곳은 pacemate 주소뿐이에요. pacemate 서버가 정리할 때 빈 칸은 AI(Anthropic)에 보내요(전화번호·이메일은 지우고).
+- 보내는 곳은 Pacemate 주소뿐이에요. Pacemate 서버가 정리할 때 빈 칸은 AI(Anthropic)에 보내요(전화번호·이메일은 지우고).
 - 화면 글은 정리에만 쓰고 원문으로 저장하지 않아요. 링크는 저장해요.
 
 ## 고친 뒤 다시 불러오기
-`background.js` 등을 고쳤으면 `chrome://extensions` 에서 pacemate의 **새로고침(↻)** 을 눌러요.
+`background.js` 등을 고쳤으면 `chrome://extensions` 에서 Pacemate의 **새로고침(↻)** 을 눌러요.
 개발 중 이 컴퓨터(localhost)로 보내려면 `background.js` 의 `APP` 을 `http://localhost:3000` 으로 바꿔요.

@@ -1,4 +1,5 @@
 import { Reveal } from "@/components/reveal";
+import { BrandName } from "@/components/brand";
 import { DemoButton, StartButton } from "@/components/start-button";
 import { BetaBadge } from "@/components/beta-badge";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -70,7 +71,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col overflow-x-hidden bg-background">
       {/* 머리 */}
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5">
-        <span className="text-lg font-bold tracking-tight">pacemate</span>
+        <BrandName />
         <div className="flex items-center gap-1"><FeedbackButton /><BetaBadge /></div>
       </header>
 
@@ -235,7 +236,7 @@ export default function Home() {
                 body: "그 사이트 공고만 모이고, 인스타그램 · 커뮤니티에서 본 공고는 따로 챙겨야 해요.",
               },
               {
-                label: "pacemate",
+                label: "Pacemate",
                 body: "어디서 본 공고든 링크 · 글 · 캡처로 넣으면 정리되고, 전형 단계까지 한곳에서 봐요.",
                 highlight: true,
               },
@@ -277,7 +278,7 @@ export default function Home() {
       {/* 푸터 */}
       <footer className="mx-auto w-full max-w-6xl px-5 py-8">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:justify-between">
-          <span className="font-semibold text-foreground">pacemate © 2026</span>
+          <span className="font-semibold text-foreground">Pacemate © 2026</span>
           <FeedbackButton className="self-start md:self-auto" />
         </div>
       </footer>

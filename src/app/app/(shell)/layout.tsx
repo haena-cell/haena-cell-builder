@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { BrandName } from "@/components/brand";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,8 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-full flex-1 bg-background">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 px-4 py-6 lg:flex">
         <div className="flex items-center gap-2 px-4">
-          <Link href="/app" className="text-lg font-bold tracking-tight">
-            pacemate
+          <Link href="/app">
+            <BrandName />
           </Link>
           <BetaBadge />
         </div>
@@ -38,8 +39,8 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between bg-background/85 px-4 backdrop-blur lg:hidden">
           <div className="flex items-center gap-2">
-            <Link href="/app" className="text-base font-bold tracking-tight">
-              pacemate
+            <Link href="/app">
+              <BrandName size="sm" />
             </Link>
             <BetaBadge />
           </div>

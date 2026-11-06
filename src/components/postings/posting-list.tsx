@@ -57,6 +57,9 @@ const TABS: { value: Status | "all"; label: string }[] = [
   { value: "past", label: "지난 공고" },
 ];
 const NO_TYPE = "미정";
+// 표 칸 너비 (D-44): 좁으면 기업·직무에 자리를 주고, 표가 넓을 때만 진행 단계 점을 보여 준다
+const TABLE_COLUMNS =
+  "lg:grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_4.5rem_4.5rem_6rem_8.5rem] lg:@[60rem]:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_9.5rem]";
 
 // 마감 임박(D-3 이내) · 마감 전 · 진행 중(지원함) · 지난 공고
 function statusOf(posting: Posting, days: number | null): Status {
@@ -303,7 +306,7 @@ export function PostingList({
   const filtering = priorityFilter.length > 0 || typeFilter.length > 0;
 
   return (
-    <Card className="gap-0 px-0 py-0 md:px-0 md:py-0">
+    <Card className="@container gap-0 px-0 py-0 md:px-0 md:py-0">
       {/* 상태 탭 */}
       <div className="flex gap-1 overflow-x-auto border-b border-border px-3 pt-3 md:px-6 md:pt-4" role="tablist" aria-label="상태">
         {TABS.map((t) => (
@@ -349,7 +352,7 @@ export function PostingList({
       </div>
 
       {/* 표 머리 (넓은 화면) */}
-      <div className="hidden grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_9.5rem] items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid">
+      <div className={cn("hidden items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid", TABLE_COLUMNS)}>
         <span>기업 · 직무</span>
         <span>진행 단계</span>
         <span>상태</span>
@@ -381,16 +384,21 @@ export function PostingList({
             const step = current === -1 ? null : posting.steps[current];
             const days = allDaysLeft[posting.id] ?? null;
             const priority = PRIORITIES.find((p) => p.value === posting.priority) ?? PRIORITIES[1];
+            // 끝낸 단계 없이 마감이 지난 공고는 어둡게 (D-44)
+            const missed = days !== null && days < 0 && posting.steps.every((s) => s.completedAt === null);
+            const dim = missed && "opacity-70";
             return (
               <li
                 key={posting.id}
                 className={cn(
-                  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_9.5rem]",
+                  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6",
+                  TABLE_COLUMNS,
+                  missed && "bg-foreground/10 hover:bg-foreground/10",
                   posting.id === highlightId && "bg-accent",
                 )}
               >
                 {/* 기업 · 직무 (줄 전체를 누르면 상세로) */}
-                <div className="min-w-0">
+                <div className={cn("min-w-0", dim)}>
                   <Link
                     href={href(`/app/postings/${posting.id}`)}
                     className="block truncate text-sm font-semibold after:absolute after:inset-0"
@@ -404,25 +412,27 @@ export function PostingList({
                 </div>
 
                 {/* 휴대폰: 상태·마감은 오른쪽 위에 */}
-                <div className="flex flex-col items-end gap-1 lg:hidden">
+                <div className={cn("flex flex-col items-end gap-1 lg:hidden", dim)}>
                   <DeadlineBadge posting={posting} daysLeft={days} />
                   <span className="text-xs text-muted-foreground tabular-nums">{formatShortDeadline(posting)}</span>
                 </div>
 
                 {/* 진행 단계 */}
-                <div className="col-span-2 flex min-w-0 items-center gap-2.5 lg:col-span-1 lg:flex-col lg:items-start lg:gap-1">
-                  <StepDots steps={posting.steps} current={current} />
+                <div className={cn("col-span-2 flex min-w-0 flex-col items-start gap-1 lg:col-span-1", dim)}>
+                  <div className="hidden w-full lg:@[60rem]:block">
+                    <StepDots steps={posting.steps} current={current} />
+                  </div>
                   <span className="truncate text-xs text-muted-foreground">{step ? step.name : "전형 끝"}</span>
                 </div>
 
-                <div className="hidden lg:block">
+                <div className={cn("hidden lg:block", dim)}>
                   <DeadlineBadge posting={posting} daysLeft={days} />
                 </div>
-                <span className="hidden text-sm tabular-nums lg:block">{formatShortDeadline(posting)}</span>
+                <span className={cn("hidden text-sm tabular-nums lg:block", dim)}>{formatShortDeadline(posting)}</span>
 
                 {/* 우선순위 · 근로형태 · 단계 넘기기 (휴대폰은 한 줄에) */}
                 <div className="col-span-2 flex items-center gap-1.5 lg:contents">
-                  <div className="lg:min-w-0">
+                  <div className={cn("lg:min-w-0", dim)}>
                     <PickMenu
                       label="우선순위"
                       value={posting.priority}
@@ -432,7 +442,7 @@ export function PostingList({
                       onPick={(v) => saveMeta(posting, { priority: v as Priority })}
                     />
                   </div>
-                  <div className="min-w-0">
+                  <div className={cn("min-w-0", dim)}>
                     <PickMenu
                       label="근로형태"
                       value={typeOf(posting)}

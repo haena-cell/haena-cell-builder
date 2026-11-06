@@ -42,7 +42,7 @@ export function FeedbackButton({ className }: { className?: string }) {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>의견 보내기</DialogTitle>
-            <DialogDescription>pacemate는 웹 베타 버전이에요. 불편한 점이나 바라는 기능을 편하게 알려 주세요.</DialogDescription>
+            <DialogDescription>Pacemate는 웹 베타 버전이에요. 불편한 점이나 바라는 기능을 편하게 알려 주세요.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandName } from "@/components/brand";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,7 +18,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm items-center gap-8 px-6 py-10 text-center md:px-8 md:py-12">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">pacemate</h1>
+            <h1><BrandName size="lg" /></h1>
             <BetaBadge />
           </div>
           <p className="text-sm text-muted-foreground">채용공고 링크만 붙여넣으면 마감일과 전형 단계를 정리해 드려요.</p>

@@ -1,8 +1,8 @@
-// pacemate 크롬 확장 프로그램 (D-33)
-// 아이콘을 누른 탭 하나만 읽는다(activeTab). 그 탭의 화면 글과 링크를 pacemate [공고 넣기] 탭에 건넨다.
+// Pacemate 크롬 확장 프로그램 (D-33)
+// 아이콘을 누른 탭 하나만 읽는다(activeTab). 그 탭의 화면 글과 링크를 Pacemate [공고 넣기] 탭에 건넨다.
 // 글이 거의 없는 화면(이미지 공고)이면 보이는 화면을 한 장 캡처해 함께 건넨다.
 
-// 결과를 넘길 pacemate 주소. 개발할 때는 "http://localhost:3000" 으로 바꾼다
+// 결과를 넘길 Pacemate 주소. 개발할 때는 "http://localhost:3000" 으로 바꾼다
 const APP = "https://haena-cell-builder.vercel.app";
 const MAX_TEXT = 20000;
 
@@ -16,7 +16,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     setBadge(tab.id, "!", "#D33A3A");
     return;
   }
-  if (tab.url.startsWith(APP)) return; // pacemate 화면에서는 아무것도 하지 않는다
+  if (tab.url.startsWith(APP)) return; // Pacemate 화면에서는 아무것도 하지 않는다
 
   try {
     setBadge(tab.id, "…", "#141414");
@@ -40,7 +40,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     const payload = { url: tab.url, text, image };
     const appTab = await chrome.tabs.create({ url: `${APP}/app/new?from=extension`, index: tab.index + 1 });
 
-    // pacemate 탭이 열리면 그 탭에 공고를 건넨다 (그 탭의 sessionStorage + 신호)
+    // Pacemate 탭이 열리면 그 탭에 공고를 건넨다 (그 탭의 sessionStorage + 신호)
     const deliver = async (tabId, info, updated) => {
       if (tabId !== appTab.id || info.status !== "complete") return;
       chrome.tabs.onUpdated.removeListener(deliver);
