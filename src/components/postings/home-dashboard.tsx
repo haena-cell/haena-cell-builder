@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateBlock, DeadlineBadge } from "@/components/postings/posting-card";
 import { deadlineKey, formatDay, isUrgent, monthCells, WEEKDAYS } from "@/components/postings/posting-calendar";
 import { DueChip } from "@/components/postings/prep-todos";
 import { StepDots } from "@/components/postings/step-bar";
 import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
-import { currentStepIndex, type Posting } from "@/lib/postings";
+import { currentStepIndex, isSubmitStep, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
 
 // 홈 (D-25): 마감 임박 공고 4개 · 이번 달 달력(날짜를 고르면 아래에 그날 마감 공고·할 일) · 남은 할 일 5개. 전체는 각 화면에서
@@ -35,7 +36,7 @@ type TodoRow = { key: string; kind: "item" | "sub"; id: string; label: string; d
 export function HomeDashboard({ initialPostings, today }: { initialPostings: Posting[]; today: string }) {
   const [postings, setPostings] = useState(initialPostings);
   const href = useAppHref();
-  const { setPrepDone, updateSubtask } = usePostingActions();
+  const { setPrepDone, setStepCompleted, updateSubtask } = usePostingActions();
   const active = postings.filter((p) => currentStepIndex(p.steps) !== -1);
   const daysOf = (p: Posting) => {
     const key = deadlineKey(p);
@@ -93,6 +94,31 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
       return next;
     });
 
+  // [제출 완료]: 화면을 먼저 바꾸고 저장, 실패하면 되돌린다. 낸 공고는 마감 임박 목록에서 빠진다
+  async function saveStep(posting: Posting, stepIndex: number, completed: boolean) {
+    const step = posting.steps[stepIndex];
+    const setCompletedAt = (completedAt: string | null) =>
+      setPostings((prev) =>
+        prev.map((p) =>
+          p.id === posting.id ? { ...p, steps: p.steps.map((s, i) => (i === stepIndex ? { ...s, completedAt } : s)) } : p,
+        ),
+      );
+    setCompletedAt(completed ? new Date().toISOString() : null);
+    const result = await setStepCompleted(step.id, completed);
+    if (!result.ok) {
+      setCompletedAt(step.completedAt);
+      toast.error(result.message);
+    }
+    return result.ok;
+  }
+
+  async function completeStep(posting: Posting, stepIndex: number) {
+    if (!(await saveStep(posting, stepIndex, true))) return;
+    toast(`${posting.company} · ${posting.steps[stepIndex].name} 완료`, {
+      action: { label: "되돌리기", onClick: () => saveStep(posting, stepIndex, false) },
+    });
+  }
+
   async function toggle(row: TodoRow) {
     const done = !row.done;
     patch(row, done);
@@ -127,28 +153,35 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
             {upcoming.slice(0, 4).map((p) => {
               const current = currentStepIndex(p.steps);
               return (
-                <li key={p.id}>
-                  <Link
-                    href={href(`/app/postings/${p.id}`)}
-                    className="flex items-stretch gap-3 rounded-[20px] border border-border p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <div className="flex w-12 shrink-0 flex-col items-center justify-center border-r border-border pr-3">
-                      <DateBlock posting={p} />
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{p.company}</p>
-                          <p className="truncate text-xs text-muted-foreground">{p.jobTitle}</p>
-                        </div>
-                        <DeadlineBadge posting={p} daysLeft={daysOf(p)} />
+                <li key={p.id} className="relative flex items-stretch gap-3 rounded-[20px] border border-border p-3 transition-colors hover:bg-muted/50">
+                  <div className="flex w-12 shrink-0 flex-col items-center justify-center border-r border-border pr-3">
+                    <DateBlock posting={p} />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        {/* 카드 전체를 누르면 상세로 (버튼은 위에 따로 눌림) */}
+                        <Link
+                          href={href(`/app/postings/${p.id}`)}
+                          className="block truncate text-sm font-semibold after:absolute after:inset-0 after:rounded-[20px]"
+                        >
+                          {p.company}
+                        </Link>
+                        <p className="truncate text-xs text-muted-foreground">{p.jobTitle}</p>
                       </div>
+                      <DeadlineBadge posting={p} daysLeft={daysOf(p)} />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
                         <StepDots steps={p.steps} current={current} />
                         <span className="truncate text-xs text-muted-foreground">{p.steps[current]?.name}</span>
                       </div>
+                      <Button variant="outline" size="sm" className="relative z-10" onClick={() => completeStep(p, current)}>
+                        <Check data-icon="inline-start" />
+                        {isSubmitStep(p.steps[current].name) ? "제출 완료" : "다음 단계로"}
+                      </Button>
                     </div>
-                  </Link>
+                  </div>
                 </li>
               );
             })}
