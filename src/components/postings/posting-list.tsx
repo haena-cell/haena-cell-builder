@@ -384,16 +384,15 @@ export function PostingList({
             const step = current === -1 ? null : posting.steps[current];
             const days = allDaysLeft[posting.id] ?? null;
             const priority = PRIORITIES.find((p) => p.value === posting.priority) ?? PRIORITIES[1];
-            // 끝낸 단계 없이 마감이 지난 공고는 어둡게 (D-44)
+            // 끝낸 단계 없이 마감이 지난 공고는 흐리게 (D-44·D-46)
             const missed = days !== null && days < 0 && posting.steps.every((s) => s.completedAt === null);
-            const dim = missed && "opacity-70";
+            const dim = missed && "opacity-50";
             return (
               <li
                 key={posting.id}
                 className={cn(
                   "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6",
                   TABLE_COLUMNS,
-                  missed && "bg-foreground/10 hover:bg-foreground/10",
                   posting.id === highlightId && "bg-accent",
                 )}
               >

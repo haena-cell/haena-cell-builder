@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BrandName } from "@/components/brand";
+import { BrandMark } from "@/components/brand";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,11 +16,10 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-full flex-1 items-center justify-center bg-background px-3 py-16">
       <Card className="w-full max-w-sm items-center gap-8 px-6 py-10 text-center md:px-8 md:py-12">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-center gap-2">
-            <h1><BrandName size="lg" /></h1>
-            <BetaBadge />
-          </div>
+        <BetaBadge className="-mt-2 h-5 px-2 text-[11px]" />
+        <div className="flex flex-col items-center gap-3">
+          <BrandMark className="size-14 text-3xl font-bold" />
+          <h1 className="text-2xl font-bold tracking-tight">Pacemate</h1>
           <p className="text-sm text-muted-foreground">채용공고 링크만 붙여넣으면 마감일과 전형 단계를 정리해 드려요.</p>
         </div>
         <Suspense fallback={<Button size="lg" className="h-12 w-full text-base" disabled>Google로 계속하기</Button>}>
