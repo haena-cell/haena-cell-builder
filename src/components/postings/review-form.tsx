@@ -181,7 +181,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         sourceKind: draft.source.kind,
         sourceUrl: draft.source.url ?? null,
         sourceText: draft.source.kind === "text" ? draft.source.text : null,
-        aiRaw: draft.posting,
+        aiRaw: { ...draft.posting, jobOptions: undefined }, // 직무 후보는 저장하지 않는다 (D-43)
       });
       if (!result.ok) {
         setError(result.message);
