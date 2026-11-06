@@ -276,15 +276,6 @@ function bodyImages(html: string, base: URL) {
   return [...new Set(urls.map((u) => u.toString()))];
 }
 
-// 사이트가 공고 본문을 별도 페이지로 두는 경우, 그 공고의 본문 페이지 주소
-function detailPageUrl(pageUrl: URL) {
-  if (pageUrl.hostname.endsWith("saramin.co.kr")) {
-    const recIdx = pageUrl.searchParams.get("rec_idx");
-    return recIdx && /^\d+$/.test(recIdx) ? `https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=${recIdx}` : null;
-  }
-  return null;
-}
-
 // 원티드: 페이지 안의 데이터(__NEXT_DATA__)에 전형 절차·주소·마감이 항목별로 있다. "항목 : 값" 글로 바꿔 같은 규칙으로 읽는다
 function wantedBody(html: string) {
   const raw = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1];
@@ -325,8 +316,8 @@ function linkareerBody(html: string) {
   }
 }
 
-// 공고 본문: 사이트의 본문 페이지 + 정리 정보 안의 본문(description). 둘 다 없으면 페이지 전체
-async function readBody(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
+// 공고 본문: 같은 페이지 안의 내용만 쓴다 (D-39). 사이트의 별도 본문 주소는 가져오지 않는다
+function readBody(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
   if (pageUrl.hostname.endsWith("wanted.co.kr")) {
     const wanted = wantedBody(html);
     if (wanted) return { text: wanted, imageUrls: [] };
@@ -336,12 +327,7 @@ async function readBody(html: string, job: Record<string, unknown> | null, pageU
     if (linkareer) return { text: htmlToLines(linkareer), imageUrls: bodyImages(linkareer, pageUrl) };
   }
   const description = job && typeof job.description === "string" && job.description.length > 50 ? job.description : "";
-  const detailUrl = detailPageUrl(pageUrl);
-  const detail = detailUrl ? await fetchPage(detailUrl).catch(() => null) : null;
-  if (detail || description) {
-    const source = `${description}\n${detail?.html ?? ""}`;
-    return { text: htmlToLines(source), imageUrls: bodyImages(source, detail?.finalUrl ?? pageUrl) };
-  }
+  if (description) return { text: htmlToLines(description), imageUrls: bodyImages(description, pageUrl) };
   return { text: htmlToLines(html), imageUrls: [] };
 }
 
@@ -402,7 +388,7 @@ export async function readPostingLink(url: string): Promise<LinkReadResult> {
   const draft = job ? fromJobPosting(job, page.html) : fromDescription(page.html);
   // 기업명도 직무도 못 찾았으면 읽은 것으로 보지 않는다
   if (!draft || (!draft.posting.company && !draft.posting.jobTitle)) return { status: "unreadable", message: UNREADABLE };
-  const body = await readBody(page.html, job, page.finalUrl);
+  const body = readBody(page.html, job, page.finalUrl);
   const filled = fillFromKeywords(draft, body.text);
   return { status: "ok", posting: withUnsure(filled), body };
 }

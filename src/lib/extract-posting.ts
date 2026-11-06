@@ -38,6 +38,14 @@ function needsLogin(url: string) {
   return LOGIN_REQUIRED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
 }
 
+// 링크로는 기본 정보만 읽고 페이지 글을 AI 에 보내지 않는 사이트 (D-40). 글을 붙여넣거나 캡처를 올리면 AI 가 읽는다
+const NO_AI_LINK_HOSTS = ["saramin.co.kr", "jobkorea.co.kr"];
+
+function linkAiAllowed(url: string) {
+  const host = new URL(url).hostname;
+  return !NO_AI_LINK_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
+
 const NEEDS_AI = ["company", "jobTitle", "deadline", "location", "employmentType", "requiredDocs", "steps"];
 const needsAi = (p: ExtractedPosting) => p.unsure.some((k) => NEEDS_AI.includes(k));
 
@@ -90,14 +98,14 @@ export async function extractPosting(input: ExtractInput): Promise<ExtractResult
     const result = await readPostingLink(input.url);
     if (result.status === "unreadable") return { status: "need_fallback", message: result.message };
     let posting = result.posting;
-    if (needsAi(posting)) {
+    if (needsAi(posting) && linkAiAllowed(input.url)) {
       const ai = await aiExtract({ text: result.body.text });
       if (ai) posting = mergeAi(posting, ai);
     }
-    // 본문이 이미지인 공고: 사이트가 이미지 가져가기를 막아(robots.txt) 링크로는 못 읽는다 → 캡처를 올리면 AI 가 읽는다
-    const imageBody = result.body.imageUrls.length > 0 && (result.body.text.length < 300 || posting.unsure.includes("steps") || posting.unsure.includes("requiredDocs"));
-    const hint = imageBody && needsAi(posting)
-      ? "이 공고는 본문 일부가 이미지라 링크로는 다 읽지 못했어요. 공고 화면을 캡처해 [캡처 올리기]로 넣으면 AI가 노란 칸을 채워요."
+    // 링크로 못 읽은 서류·전형은 사용자가 글·캡처로 넣으면 채워진다
+    const missingBody = posting.unsure.includes("steps") || posting.unsure.includes("requiredDocs");
+    const hint = missingBody
+      ? "링크로는 기본 정보만 읽었어요. 서류·전형은 공고 글을 붙여넣거나 화면을 캡처해 올리면 노란 칸을 채울 수 있어요."
       : undefined;
     return { status: "ok", posting, isExample: false, hint };
   }
