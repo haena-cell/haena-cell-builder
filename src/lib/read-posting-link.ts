@@ -196,7 +196,7 @@ function tidyTitle(title: string, company: string) {
     .trim();
 }
 
-type Draft = { posting: ExtractedPosting; deadlineUnsure: boolean };
+type Draft = { posting: ExtractedPosting; deadlineUnsure: boolean; guessedFields?: string[] };
 
 function fromJobPosting(job: Record<string, unknown>, html: string): Draft {
   const company = clean((job.hiringOrganization as { name?: unknown } | undefined)?.name);
@@ -285,24 +285,38 @@ async function readBody(html: string, job: Record<string, unknown> | null, pageU
 function fillFromKeywords({ posting, deadlineUnsure }: Draft, text: string): Draft {
   const kw = readKeywordFields(text);
   const next = { ...posting };
+  // 페이지 정보에 기업명·직무가 없을 때만 본문에서 가져온다. 짐작한 값은 확인 칸으로 남긴다
+  const guessedFields: string[] = [];
+  if (!next.company && kw.company) {
+    next.company = kw.company;
+    if (kw.guessed.includes("company")) guessedFields.push("company");
+  }
+  if (!next.jobTitle && kw.jobTitle) {
+    next.jobTitle = kw.jobTitle;
+    if (kw.guessed.includes("jobTitle")) guessedFields.push("jobTitle");
+  }
   next.employmentType ||= kw.employmentType;
   if (kw.location && (!next.location || kw.location.length > next.location.length)) next.location = kw.location;
   if (kw.steps.length >= 2) next.steps = kw.steps;
   if (kw.requiredDocs.length) next.requiredDocs = kw.requiredDocs;
   let unsureDeadline = deadlineUnsure;
-  if (!next.deadlineKind && kw.deadlineDate) {
-    const d = deadlineFrom(kw.deadlineDate);
-    if (d) Object.assign(next, d);
+  if (!next.deadlineKind && kw.deadlineKind) {
+    if (kw.deadlineDate) {
+      const d = deadlineFrom(kw.deadlineTime ? `${kw.deadlineDate}T${kw.deadlineTime}:00+09:00` : kw.deadlineDate);
+      if (d) Object.assign(next, d);
+    } else {
+      next.deadlineKind = kw.deadlineKind;
+    }
     unsureDeadline = true;
   }
-  return { posting: next, deadlineUnsure: unsureDeadline };
+  return { posting: next, deadlineUnsure: unsureDeadline, guessedFields };
 }
 
 // 비었거나 자신 없는 칸은 확인 화면에서 노랑으로
-function withUnsure({ posting: p, deadlineUnsure }: Draft): ExtractedPosting {
-  const unsure: string[] = [];
-  if (!p.company) unsure.push("company");
-  if (!p.jobTitle) unsure.push("jobTitle");
+function withUnsure({ posting: p, deadlineUnsure, guessedFields }: Draft): ExtractedPosting {
+  const unsure: string[] = [...(guessedFields ?? [])];
+  if (!p.company && !unsure.includes("company")) unsure.push("company");
+  if (!p.jobTitle && !unsure.includes("jobTitle")) unsure.push("jobTitle");
   if (deadlineUnsure || !p.deadlineKind) unsure.push("deadline");
   if (!p.location) unsure.push("location");
   if (!p.employmentType) unsure.push("employmentType");

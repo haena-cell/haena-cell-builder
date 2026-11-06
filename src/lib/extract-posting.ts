@@ -41,16 +41,16 @@ function needsLogin(url: string) {
 const NEEDS_AI = ["company", "jobTitle", "deadline", "location", "employmentType", "requiredDocs", "steps"];
 const needsAi = (p: ExtractedPosting) => p.unsure.some((k) => NEEDS_AI.includes(k));
 
-// 글 붙여넣기: 키워드로 먼저 채운다. 기업명·직무는 키워드로 알 수 없어 AI 몫
+// 글 붙여넣기: 키워드로 먼저 채운다. 항목 이름 없이 짐작한 기업명·직무와 마감일은 확인 칸으로 남긴다
 function fromText(text: string): ExtractedPosting {
-  const kw = readKeywordFields(text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join("\n"));
-  const deadlineAt = kw.deadlineDate ? new Date(`${kw.deadlineDate}T23:59:00+09:00`).toISOString() : null;
+  const kw = readKeywordFields(text);
+  const deadlineAt = kw.deadlineDate ? new Date(`${kw.deadlineDate}T${kw.deadlineTime ?? "23:59"}:00+09:00`).toISOString() : null;
   const posting: ExtractedPosting = {
-    company: "",
-    jobTitle: "",
-    deadlineKind: deadlineAt ? "date" : null,
+    company: kw.company ?? "",
+    jobTitle: kw.jobTitle ?? "",
+    deadlineKind: kw.deadlineKind,
     deadlineAt,
-    deadlineTimeKnown: false,
+    deadlineTimeKnown: kw.deadlineTime !== null,
     location: kw.location,
     employmentType: kw.employmentType,
     companySize: null,
@@ -58,7 +58,9 @@ function fromText(text: string): ExtractedPosting {
     steps: kw.steps.length >= 2 ? kw.steps : ["서류 제출", "면접", "최종 결과"],
     unsure: [],
   };
-  const unsure = ["company", "jobTitle", "deadline"];
+  const unsure = ["deadline", ...kw.guessed] as string[];
+  if (!posting.company && !unsure.includes("company")) unsure.push("company");
+  if (!posting.jobTitle && !unsure.includes("jobTitle")) unsure.push("jobTitle");
   if (!posting.location) unsure.push("location");
   if (!posting.employmentType) unsure.push("employmentType");
   if (posting.requiredDocs.length === 0) unsure.push("requiredDocs");
