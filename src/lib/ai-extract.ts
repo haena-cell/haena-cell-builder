@@ -13,6 +13,7 @@ const MAX_TEXT = 12_000; // 보내는 글자 수 상한 (비용 제한)
 const AiPosting = z.object({
   company: z.string().nullable(),
   jobTitle: z.string().nullable(),
+  jobOptions: z.array(z.string()),
   deadlineKind: z.enum(["date", "rolling", "until_filled", "unknown"]),
   deadlineDate: z.string().nullable().describe("YYYY-MM-DD, 한국 날짜"),
   deadlineTime: z.string().nullable().describe("HH:MM 24시간, 공고에 시각이 적혀 있을 때만"),
@@ -27,6 +28,7 @@ type AiPosting = z.infer<typeof AiPosting>;
 const SYSTEM = `너는 한국 채용공고에서 정해진 항목만 뽑아 정리한다.
 - 공고에 적힌 내용만 쓴다. 적혀 있지 않으면 null(목록은 빈 배열), 추측하지 않는다.
 - company: 채용하는 회사 이름. jobTitle: 모집 직무(공고 제목의 꾸밈말은 뺀다).
+- jobOptions: 한 공고에서 여러 직무를 모집하면 지원자가 고를 직무 이름을 모두(경력·인턴·레벨이 다르면 따로). 직무가 하나면 빈 배열.
 - 마감: 날짜가 있으면 deadlineKind "date"와 deadlineDate. "상시 채용"은 "rolling", "채용 시 마감"은 "until_filled", 알 수 없으면 "unknown". 기간이 있으면 끝 날짜. 연도가 없으면 unknown.
 - employmentType: 정규직·계약직·인턴·파견·프리랜서·아르바이트 중 해당하는 것(여러 개면 쉼표).
 - location: 근무지(주소나 지역, 지하철역 안내가 있으면 괄호로).
@@ -108,6 +110,8 @@ export function mergeAi(posting: ExtractedPosting, ai: AiPosting): ExtractedPost
   fill("requiredDocs", ai.requiredDocs.length > 0, () => (next.requiredDocs = ai.requiredDocs.slice(0, 10)));
   fill("steps", ai.steps.length >= 2, () => (next.steps = ai.steps.slice(0, 10)));
   next.companySize ||= ai.companySize?.trim() || null;
+  const aiOptions = [...new Set(ai.jobOptions.map((s) => s.trim()).filter(Boolean))];
+  if (aiOptions.length >= 2) next.jobOptions = aiOptions.slice(0, 12);
 
   // 같은 마감 날짜를 키워드로 이미 읽었고 AI 가 시각까지 읽었으면 시각만 더한다
   // "23:59"·"24:00" 은 날짜만 아는 것과 같다 (시각 없이 그날까지). 24:00 을 그대로 쓰면 다음 날이 된다

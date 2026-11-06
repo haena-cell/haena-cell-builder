@@ -13,6 +13,7 @@ export type KeywordFields = {
   deadlineDate: string | null; // YYYY-MM-DD (한국 날짜)
   deadlineTime: string | null; // HH:MM, 공고에 시각이 있을 때만 (23:59·24시는 날짜만 아는 것으로)
   guessed: ("company" | "jobTitle")[]; // 항목 이름 없이 첫 줄·문장에서 짐작한 칸
+  jobOptions: string[]; // 한 공고에 여러 직무가 있을 때 후보 (D-43). 하나면 빈 배열
 };
 
 const LABELS = {
@@ -359,6 +360,27 @@ function fromSentences(lines: string[]) {
   return { company, jobTitle };
 }
 
+// 한 공고에 여러 직무가 있을 때 후보 (D-43). 확실한 모양만 읽고 나머지는 AI 에 맡긴다
+function jobOptionsFrom(lines: string[], titleLabel: string | null) {
+  const found: string[] = [];
+  for (const raw of lines) {
+    const line = raw.replace(/\uFE0F/g, "").trim();
+    // "[인턴] 브랜드 디자이너" · "[경력] 브랜드 디자이너 / 프로젝트 리드 (5년 이상)"
+    const level = /^\[(인턴|신입|경력|계약직)\]\s*([^/(]+)/.exec(line);
+    if (level && new RegExp(JOB_WORD).test(level[2])) found.push(`${level[1]} ${level[2].trim()}`);
+    // "1️⃣ 그래픽 디자이너(경력 0명)"
+    const numbered = /^[1-9]\u20E3\s*([^[(]+?)\s*(?:\(\s*([가-힣]+)[^)]*\))?\s*$/.exec(line);
+    if (numbered && new RegExp(JOB_WORD).test(numbered[1])) found.push([numbered[2], numbered[1].trim()].filter(Boolean).join(" "));
+    // "시니어 디자이너와 인턴 디자이너를 찾습니다"
+    const pair = new RegExp(`(\\S+\\s\\S*${JOB_WORD})(?:와|과|,)\\s*(\\S+\\s\\S*${JOB_WORD})(?:을|를)\\s*(?:찾|모집|채용)`).exec(line);
+    if (pair) found.push(pair[1], pair[2]);
+  }
+  // "모집 직무 : UI 디자이너, 브랜드 디자이너"
+  if (titleLabel?.includes(",")) found.push(...titleLabel.split(",").map((s) => s.trim()).filter((s) => s.length >= 2 && s.length <= 30));
+  const unique = [...new Set(found)];
+  return unique.length >= 2 ? unique.slice(0, 12) : [];
+}
+
 // 문장 속 근무지: "근무지는 경기 성남시 분당구 판교역로 220 (삼평동, 안랩)이며"
 function locationFromSentence(text: string) {
   const m = /근무\s*(?:지역|지|장소|위치)(?:는|은)\s+([^\n]+?)(?:이며|이고|입니다|에서\s)/.exec(text);
@@ -441,5 +463,6 @@ export function readKeywordFields(text: string, now: Date = new Date()): Keyword
     requiredDocs: [...new Set([...(docs ? docsFrom(docs) : []), ...docsFromSentence(lines)])],
     ...readDeadline(lines, body, now),
     guessed,
+    jobOptions: jobOptionsFrom(lines, titleLabel),
   };
 }

@@ -116,7 +116,9 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
     if (similar) similarRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [similar]);
 
-  const isUnsure = (key: string) => p.unsure.includes(key) && !touched.has(key);
+  const jobOptions = p.jobOptions ?? [];
+  // 여러 직무 공고는 고르거나 고칠 때까지 직무 칸을 확인 칸으로 둔다 (D-43)
+  const isUnsure = (key: string) => (p.unsure.includes(key) || (key === "jobTitle" && jobOptions.length >= 2)) && !touched.has(key);
   const touch = (key: string) => setTouched((prev) => new Set(prev).add(key));
 
   function toggleDoc(doc: string) {
@@ -267,6 +269,27 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
                 onChange={(e) => { setCompany(e.target.value); touch("company"); }} />
             </Field>
             <Field label="직무" htmlFor="jobTitle" unsure={isUnsure("jobTitle")}>
+              {jobOptions.length >= 2 && (
+                <div className="flex flex-col gap-2 px-1">
+                  <p className="text-xs text-muted-foreground">여러 직무를 모집하는 공고예요. 지원할 직무를 골라 주세요.</p>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="지원할 직무">
+                    {jobOptions.map((name) => (
+                      <Button
+                        key={name}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        role="radio"
+                        aria-checked={jobTitle === name}
+                        className={cn("h-auto whitespace-normal py-1.5 text-left", jobTitle === name && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
+                        onClick={() => { setJobTitle(name); touch("jobTitle"); }}
+                      >
+                        {name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Input id="jobTitle" value={jobTitle} maxLength={100}
                 onChange={(e) => { setJobTitle(e.target.value); touch("jobTitle"); }} />
             </Field>

@@ -345,6 +345,7 @@ function fillFromKeywords({ posting, deadlineUnsure }: Draft, text: string): Dra
     next.jobTitle = kw.jobTitle;
     if (kw.guessed.includes("jobTitle")) guessedFields.push("jobTitle");
   }
+  next.jobOptions = kw.jobOptions;
   next.employmentType ||= kw.employmentType;
   if (kw.location && (!next.location || kw.location.length > next.location.length)) next.location = kw.location;
   if (kw.steps.length >= 2) next.steps = kw.steps;

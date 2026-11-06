@@ -15,6 +15,7 @@ export type ExtractInput =
 export type ExtractedPosting = {
   company: string;
   jobTitle: string;
+  jobOptions?: string[]; // 여러 직무 공고의 후보. 확인 화면에서 고르는 데만 쓰고 저장하지 않는다 (D-43)
   deadlineKind: DeadlineKind | null; // 모르면 비워 두고 사용자가 고른다
   deadlineAt: string | null;
   deadlineTimeKnown: boolean;
@@ -56,6 +57,7 @@ function fromText(text: string): ExtractedPosting {
   const posting: ExtractedPosting = {
     company: kw.company ?? "",
     jobTitle: kw.jobTitle ?? "",
+    jobOptions: kw.jobOptions,
     deadlineKind: kw.deadlineKind,
     deadlineAt,
     deadlineTimeKnown: kw.deadlineTime !== null,
