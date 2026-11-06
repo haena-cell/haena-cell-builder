@@ -7,7 +7,7 @@ import type { ExtractedPosting } from "@/lib/extract-posting";
 // 키워드·정리 정보로 먼저 채우고, 못 채운 칸이 있거나 본문·캡처가 이미지일 때만 부른다.
 // 실패하거나 월 한도(20달러)에 닿으면 null — 부르는 쪽은 키워드 결과를 그대로 쓴다.
 
-const MODEL = "claude-sonnet-5-5";
+const MODEL = process.env.AI_MODEL || "claude-sonnet-5-5"; // 비교할 때나 나중에 바꿀 때 환경변수로
 const MAX_TEXT = 12_000; // 보내는 글자 수 상한 (비용 제한)
 
 const AiPosting = z.object({
@@ -71,8 +71,8 @@ export async function aiExtract(source: AiSource): Promise<AiPosting | null> {
       {
         model: MODEL,
         max_tokens: 4000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default", // 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도
+        // 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도 (Haiku 는 지원하지 않는다)
+        ...(MODEL.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
         output_config: { effort: "low", format: betaZodOutputFormat(AiPosting) },
         system: SYSTEM,
         messages: [{ role: "user", content }],

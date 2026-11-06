@@ -95,9 +95,9 @@ export async function extractPosting(input: ExtractInput): Promise<ExtractResult
       if (ai) posting = mergeAi(posting, ai);
     }
     // 본문이 이미지인 공고: 사이트가 이미지 가져가기를 막아(robots.txt) 링크로는 못 읽는다 → 캡처를 올리면 AI 가 읽는다
-    const imageBody = result.body.text.length < 300 && result.body.imageUrls.length > 0;
+    const imageBody = result.body.imageUrls.length > 0 && (result.body.text.length < 300 || posting.unsure.includes("steps") || posting.unsure.includes("requiredDocs"));
     const hint = imageBody && needsAi(posting)
-      ? "이 공고는 본문이 이미지라 링크로는 다 읽지 못했어요. 공고 화면을 캡처해 [캡처 올리기]로 넣으면 AI가 노란 칸을 채워요."
+      ? "이 공고는 본문 일부가 이미지라 링크로는 다 읽지 못했어요. 공고 화면을 캡처해 [캡처 올리기]로 넣으면 AI가 노란 칸을 채워요."
       : undefined;
     return { status: "ok", posting, isExample: false, hint };
   }

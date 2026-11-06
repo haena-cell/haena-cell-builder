@@ -51,7 +51,7 @@ const DOC_WORDS = [
   "자격증", "어학성적", "증빙서류", "주민등록등본", "건강진단서", "추천서", "과제",
 ];
 const REGION = /^(서울|경기|인천|부산|대구|대전|광주|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주|충청|전라|경상)/;
-const STEP_WORD = /서류|면접|인터뷰|과제|합격|최종|인적성|코딩|실기|resume|interview|offer|test/i;
+const STEP_WORD = /서류|면접|인터뷰|과제|합격|합류|입사|처우|레퍼런스|평판|최종|인적성|코딩|실기|resume|interview|offer|test/i;
 // 첫 줄에서 회사 이름으로 볼 수 없는 낱말
 const GENERIC_WORD = /^(서비스|브랜드|콘텐츠|마케팅|사업|데이터|프로덕트|그로스|퍼포먼스|신입|경력|채용|공고|모집|인턴|정규직|계약직|\d)/;
 
@@ -187,12 +187,29 @@ function soleEmployment(text: string) {
 function stepsFrom(value: string) {
   const parts = value
     .replace(/\uFE0F/g, "")
-    .split(/\s*(?:→|->|⇒|➡|▶|▷|〉|›|>|＞|\s-\s|,|\/|\d+\s*[.)]\s)\s*/)
-    .map((s) => s.replace(/^\d+\s*[.)]\s*/, "").replace(/[()]/g, " ").replace(/\s+/g, " ").trim())
-    .filter((s) => s.length > 0 && s.length <= 20 && !/지원\s*방법|접수\s*방법|유의\s*사항|문의|^step\s*\d+$/i.test(s));
+    .split(/\s*(?:→|-?＞|->|⇒|➡|▶|▷|〉|›|>|\s-\s|,|\/|\d+\s*[.)]\s)\s*/)
+    .map((s) => s.replace(/^\d+\s*[.)]\s*/, "").replace(/^\(([^)]*)\)$/, "$1").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim())
+    // 안내 문장("면접일정은 추후 통보됩니다.")은 단계가 아니다
+    .filter((s) => s.length > 0 && s.length <= 20 && !/지원\s*방법|접수\s*방법|유의\s*사항|문의|^step\s*\d+$|니다\.?$/i.test(s));
   // 단계 같은 낱말이 절반은 있어야 전형 절차로 본다 (직무 분류표 등을 잘못 읽지 않게)
   const stepLike = parts.filter((s) => STEP_WORD.test(s)).length;
   return parts.length >= 2 && stepLike * 2 >= parts.length ? [...new Set(parts)].slice(0, 8) : [];
+}
+
+// 전형 안내 글에서 단계만: "서류 ＞ 면접" 한 줄 · "• 서류 전형 / • 1차 면접" 여러 줄 · "서류전형  1차 면접  입사" 띄어쓰기로 구분
+export function stepsFromRounds(rounds: string) {
+  const lines = rounds.split(/\r?\n/).map((l) => l.replace(/\uFE0F/g, "").trim()).filter(Boolean);
+  for (const raw of lines) {
+    const line = stripLead(raw).replace(/^(전형\s*절차|채용\s*절차)\s*[:：]\s*/, "");
+    if (/^\d+[.)]/.test(raw) || /니다\.?$|돼요\.?$/.test(line)) continue;
+    const spaced = /\S\s{2,}\S/.test(line) ? line.replace(/\s{2,}/g, " → ") : line;
+    if (!/→|-?＞|->|➡|▶|>|\s-\s/.test(spaced)) continue;
+    const steps = stepsFrom(spaced);
+    if (steps.length >= 2) return steps;
+  }
+  // 한 줄에 하나씩: 단계 낱말이 있는 짧은 줄이 이어지는 부분
+  const short = lines.map((l) => stripLead(l)).filter((l) => l.length <= 20 && STEP_WORD.test(l) && !/니다\.?$|돼요\.?$/.test(l));
+  return short.length >= 2 ? stepsFrom(short.join(" → ")) : [];
 }
 
 function docsFrom(value: string) {
@@ -202,7 +219,7 @@ function docsFrom(value: string) {
     .map((s) => s.trim())
     .filter(Boolean);
   // 목록에 없는 서류 이름은 짧고 설명이 아닐 때만 ("희망연봉 필수 기재" 같은 안내는 뺀다)
-  const docs = items.map((item) => DOC_WORDS.find((w) => item.includes(w)) ?? (item.length <= 15 && !/기재|필수|작성|선택|제출/.test(item) ? item : null));
+  const docs = items.map((item) => DOC_WORDS.find((w) => item.includes(w)) ?? (item.length <= 15 && !/기재|필수|작성|선택|제출|지원|문의|채용|접수/.test(item) ? item : null));
   return [...new Set(docs.filter((d): d is string => !!d))].slice(0, 8);
 }
 
@@ -301,10 +318,11 @@ function fromHeadline(lines: string[]) {
   return { company: null, jobTitle: null };
 }
 
-// 문장 속 근무지: "근무지는 경기 성남시 분당구이며"
+// 문장 속 근무지: "근무지는 경기 성남시 분당구 판교역로 220 (삼평동, 안랩)이며"
 function locationFromSentence(text: string) {
-  const m = /근무\s*(?:지역|지|장소|위치)(?:는|은)\s+([^,.\n]+?)(?:이며|이고|입니다|에서|,|\.|\n|$)/.exec(text);
-  return m && REGION.test(m[1].trim()) ? m[1].trim() : null;
+  const m = /근무\s*(?:지역|지|장소|위치)(?:는|은)\s+([^\n]+?)(?:이며|이고|입니다|에서\s)/.exec(text);
+  const value = m?.[1].replace(/^대한민국\s*/, "").trim();
+  return value && REGION.test(value) ? value : null;
 }
 
 const tidyLocation = (value: string) =>
@@ -314,6 +332,9 @@ const tidyLocation = (value: string) =>
     .replace(/^\(\d{5}\)\s*/, "")
     .replace(/^([가-힣]{2,4})\s*:\s*/, "$1 ")
     .replace(/\s*→\s*/g, ", ")
+    // 인크루트: "서울 > 전지역 외 + 서울 > 전지역"
+    .replace(/\s*외\s*\+.*$/, " 외")
+    .replace(/\s+>\s+/g, " ")
     .slice(0, 60)
     .trim() || null;
 

@@ -1,7 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import type { ExtractedPosting } from "@/lib/extract-posting";
-import { htmlToLines, readKeywordFields } from "@/lib/posting-keywords";
+import { htmlToLines, readKeywordFields, stepsFromRounds } from "@/lib/posting-keywords";
 
 // 링크로 공고 읽기 (T-15, D-23·D-24). AI 없이 페이지 안의 정리된 채용 정보(JobPosting)·설명 한 줄을 읽는다.
 // 원칙(D-24): 사용자가 [정리하기]를 누를 때 그 페이지 하나만 한 번 가져오고, 공고 전문은 저장하지 않는다.
@@ -186,7 +186,13 @@ function deadlineFromText(html: string) {
 const bareName = (s: string) => s.replace(/\(주\)|㈜|주식회사|\s/g, "");
 function tidyTitle(title: string, company: string) {
   return title
-    .replace(/\s*[-|]\s*(사람인|잡코리아|원티드|링커리어|캐치|인크루트)[^-|]*$/, "")
+    .replace(/\s*[-|:]\s*(사람인|잡코리아|원티드|링커리어|캐치|인크루트)[^-|:]*$/, "")
+    // 인크루트: "(주)회사,제목" 의 앞 회사 이름 떼기
+    .replace(/^([^,[]+),\s*/, (m, head: string) => {
+      const a = bareName(head);
+      const b = bareName(company);
+      return a && b && (a.includes(b) || b.includes(a)) ? "" : m;
+    })
     .replace(/\s*\((?:~|D-)[^)]*\)\s*$/i, "")
     .replace(/^\s*\[([^\]]*)\]\s*/, (m, inner: string) => {
       const a = bareName(inner);
@@ -228,7 +234,9 @@ function fromDescription(html: string): Draft | null {
 
   const parts = desc.split(",").map((s) => s.trim());
   const bracket = /^\[([^\]]+)\]/.exec(title)?.[1]?.trim() ?? "";
-  const company = bracket || (desc && !parts[0].includes(":") ? parts[0] : "");
+  // 인크루트 제목: "(주)회사,공고 제목 : 인크루트 채용"
+  const incruitHead = /^([^,[]+),.*인크루트/.exec(title)?.[1]?.replace(/\(주\)|㈜|주식회사/g, "").trim() ?? "";
+  const company = incruitHead || bracket || (desc && !parts[0].includes(":") ? parts[0] : "");
   const due = /마감일\s*:\s*([^,]+)/.exec(desc)?.[1]?.trim() ?? "";
   const deadline = /^\d{4}-\d{2}-\d{2}/.test(due)
     ? deadlineFrom(due.slice(0, 10))
@@ -268,15 +276,71 @@ function bodyImages(html: string, base: URL) {
   return [...new Set(urls.map((u) => u.toString()))];
 }
 
-// 공고 본문: 정리 정보 안의 본문(description) → 사람인은 같은 공고의 본문 페이지 → 없으면 페이지 전체
-async function readBody(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
-  if (job && typeof job.description === "string" && job.description.length > 50) {
-    return { text: htmlToLines(job.description), imageUrls: bodyImages(job.description, pageUrl) };
+// 사이트가 공고 본문을 별도 페이지로 두는 경우, 그 공고의 본문 페이지 주소
+function detailPageUrl(pageUrl: URL) {
+  if (pageUrl.hostname.endsWith("saramin.co.kr")) {
+    const recIdx = pageUrl.searchParams.get("rec_idx");
+    return recIdx && /^\d+$/.test(recIdx) ? `https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=${recIdx}` : null;
   }
-  const recIdx = pageUrl.hostname.endsWith("saramin.co.kr") ? pageUrl.searchParams.get("rec_idx") : null;
-  if (recIdx && /^\d+$/.test(recIdx)) {
-    const detail = await fetchPage(`https://www.saramin.co.kr/zf_user/jobs/relay/view-detail?rec_idx=${recIdx}`).catch(() => null);
-    if (detail) return { text: htmlToLines(detail.html), imageUrls: bodyImages(detail.html, detail.finalUrl) };
+  return null;
+}
+
+// 원티드: 페이지 안의 데이터(__NEXT_DATA__)에 전형 절차·주소·마감이 항목별로 있다. "항목 : 값" 글로 바꿔 같은 규칙으로 읽는다
+function wantedBody(html: string) {
+  const raw = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1];
+  if (!raw) return null;
+  try {
+    const job = JSON.parse(raw)?.props?.pageProps?.initialData;
+    if (!job) return null;
+    const text = (v: unknown) => (typeof v === "string" ? v : "");
+    const rounds = text(job.hire_rounds);
+    return [
+      `전형절차 : ${stepsFromRounds(rounds).join(" → ")}`,
+      job.address?.full_location ? `근무지 : ${text(job.address.full_location)}` : "",
+      // 원티드는 마감일이 없으면 상시 채용이다
+      job.due_time ? "" : "마감 : 상시",
+      rounds,
+      text(job.intro),
+      text(job.main_tasks),
+      text(job.requirements),
+      text(job.preferred_points),
+    ].filter(Boolean).join("\n");
+  } catch {
+    return null;
+  }
+}
+
+// 링커리어: 같은 페이지의 데이터(__NEXT_DATA__) 안에 공고 본문(ActivityText)이 HTML 로 있다
+function linkareerBody(html: string) {
+  const raw = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1];
+  if (!raw) return null;
+  try {
+    const state: Record<string, { text?: unknown }> = JSON.parse(raw)?.props?.pageProps?.__APOLLO_STATE__ ?? {};
+    const texts = Object.entries(state)
+      .filter(([key, value]) => key.startsWith("ActivityText:") && typeof value?.text === "string")
+      .map(([, value]) => value.text as string);
+    return texts.sort((a, b) => b.length - a.length)[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+// 공고 본문: 사이트의 본문 페이지 + 정리 정보 안의 본문(description). 둘 다 없으면 페이지 전체
+async function readBody(html: string, job: Record<string, unknown> | null, pageUrl: URL) {
+  if (pageUrl.hostname.endsWith("wanted.co.kr")) {
+    const wanted = wantedBody(html);
+    if (wanted) return { text: wanted, imageUrls: [] };
+  }
+  if (pageUrl.hostname.endsWith("linkareer.com")) {
+    const linkareer = linkareerBody(html);
+    if (linkareer) return { text: htmlToLines(linkareer), imageUrls: bodyImages(linkareer, pageUrl) };
+  }
+  const description = job && typeof job.description === "string" && job.description.length > 50 ? job.description : "";
+  const detailUrl = detailPageUrl(pageUrl);
+  const detail = detailUrl ? await fetchPage(detailUrl).catch(() => null) : null;
+  if (detail || description) {
+    const source = `${description}\n${detail?.html ?? ""}`;
+    return { text: htmlToLines(source), imageUrls: bodyImages(source, detail?.finalUrl ?? pageUrl) };
   }
   return { text: htmlToLines(html), imageUrls: [] };
 }
