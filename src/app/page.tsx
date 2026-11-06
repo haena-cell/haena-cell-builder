@@ -1,6 +1,8 @@
 import { Reveal } from "@/components/reveal";
 import { DemoButton, StartButton } from "@/components/start-button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { BetaBadge } from "@/components/beta-badge";
+import { FeedbackButton } from "@/components/feedback-button";
+import { LandingPreview } from "@/components/landing-preview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -69,16 +71,13 @@ export default function Home() {
       {/* 머리 */}
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5">
         <span className="text-lg font-bold tracking-tight">pacemate</span>
-        <Badge variant="warning">연습용 서비스</Badge>
+        <div className="flex items-center gap-1"><FeedbackButton /><BetaBadge /></div>
       </header>
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-3 px-3 md:gap-4 md:px-5">
         {/* 1. 히어로 */}
-        <Panel className="md:py-28">
+        <Panel className="md:pt-16 md:pb-12">
           <Reveal>
-            <Badge variant="secondary" className="mb-6">
-              연습용으로 만든 서비스예요 · 가짜 공고로 먼저 써 보세요
-            </Badge>
             <h1 className="max-w-4xl text-4xl leading-[1.15] font-bold tracking-tight md:text-6xl">
               채용공고 링크 하나로
               <br />
@@ -97,6 +96,9 @@ export default function Home() {
               </span>
             </div>
           </Reveal>
+          <div className="mt-10">
+            <LandingPreview />
+          </div>
         </Panel>
 
         {/* 2. 문제 */}
@@ -262,32 +264,11 @@ export default function Home() {
               한곳에 모아 보세요
             </h2>
             <p className="mt-6 text-base leading-relaxed text-muted-foreground md:text-lg">
-              연습용 서비스예요. 로그인 전에 예시 공고로 먼저 둘러볼 수 있어요.
+              지금은 웹 베타 버전이에요. 로그인 전에 예시 공고로 먼저 둘러볼 수 있어요.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <StartButton className="h-12 px-8 text-base font-semibold" />
               <DemoButton className="h-12 px-6 text-base font-semibold" />
-            </div>
-          </Reveal>
-        </Panel>
-
-        {/* 7. 만든 사람 */}
-        <Panel>
-          <Reveal>
-            <SectionLabel no="04">만든 사람</SectionLabel>
-            <div className="flex items-start gap-5">
-              <Avatar className="size-14">
-                <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
-                  1018
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-xl font-bold tracking-tight">1018</p>
-                <p className="mt-2 text-base leading-relaxed text-muted-foreground md:text-lg">
-                  취준생이 공고를 옮겨 적는 시간을 줄이고, 지원을 놓치지 않도록
-                  돕고 싶어서 만들고 있어요.
-                </p>
-              </div>
             </div>
           </Reveal>
         </Panel>
@@ -297,7 +278,7 @@ export default function Home() {
       <footer className="mx-auto w-full max-w-6xl px-5 py-8">
         <div className="flex flex-col gap-2 text-sm text-muted-foreground md:flex-row md:justify-between">
           <span className="font-semibold text-foreground">pacemate © 2026</span>
-          <span>Built with Claude Code · AI 프로덕트 빌더 클럽 3기</span>
+          <FeedbackButton className="self-start md:self-auto" />
         </div>
       </footer>
     </div>

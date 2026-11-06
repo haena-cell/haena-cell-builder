@@ -39,6 +39,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          contact: string | null
+          created_at: string
+          id: string
+          message: string
+          page: string | null
+          user_id: string | null
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          page?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          page?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       posting_steps: {
         Row: {
           completed_at: string | null
