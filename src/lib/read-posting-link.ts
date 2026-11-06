@@ -385,6 +385,11 @@ export async function readPostingLink(url: string): Promise<LinkReadResult> {
   if (!page) return { status: "unreadable", message: UNREADABLE };
 
   const job = findJobPosting(page.html);
+  // 공고 하나가 아니라 사이트 첫 화면이면 읽은 것으로 보지 않는다 (AI 도 부르지 않는다)
+  const { pathname, search, hash } = page.finalUrl;
+  if (!job && pathname === "/" && !search && !hash) {
+    return { status: "unreadable", message: "이 주소는 사이트 첫 화면이에요. 공고 하나를 연 화면의 주소를 넣어 주세요." };
+  }
   const draft = job ? fromJobPosting(job, page.html) : fromDescription(page.html);
   // 기업명도 직무도 못 찾았으면 읽은 것으로 보지 않는다
   if (!draft || (!draft.posting.company && !draft.posting.jobTitle)) return { status: "unreadable", message: UNREADABLE };
