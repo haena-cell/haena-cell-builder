@@ -24,6 +24,7 @@ const LABELS = {
   requiredDocs: /^(제출\s*서류|제출\s*자료|필수\s*서류|필요\s*서류|지원\s*서류|구비\s*서류|제출)/,
   deadline: /^(접수\s*마감일?|지원\s*마감일?|서류\s*마감일?|마감\s*일시|마감\s*기한|마감\s*일|마감|deadline)/i,
   period: /^(접수\s*기간|모집\s*기간|지원\s*기간|서류\s*접수)/,
+  address: /^(회사\s*주소|사무실\s*주소|주소)/,
 };
 type Key = keyof typeof LABELS;
 
@@ -37,7 +38,7 @@ const EMOJI_LABELS: [RegExp, Key][] = [
   [/^\s*(⏰|📅|🗓|⏳)/u, "deadline"],
 ];
 
-const EMPLOYMENT_WORDS = ["정규직", "계약직", "인턴", "파견직", "파견", "프리랜서", "아르바이트", "위촉직", "전환형 인턴"];
+const EMPLOYMENT_WORDS = ["정규직", "계약직", "인턴", "파견직", "파견", "프리랜서", "아르바이트", "파트타임", "위촉직", "전환형 인턴"];
 const EMPLOYMENT_ENGLISH: [RegExp, string][] = [
   [/full[\s-]*time/i, "정규직"],
   [/part[\s-]*time/i, "아르바이트"],
@@ -46,11 +47,11 @@ const EMPLOYMENT_ENGLISH: [RegExp, string][] = [
   [/freelanc/i, "프리랜서"],
 ];
 const DOC_WORDS = [
-  "이력서", "자기소개서", "포트폴리오", "경력기술서", "경력증명서", "졸업증명서", "성적증명서",
-  "자격증", "어학성적", "주민등록등본", "건강진단서", "추천서", "과제",
+  "입사지원서", "이력서", "자기소개서", "포트폴리오", "경력기술서", "경력증명서", "졸업증명서", "성적증명서",
+  "자격증", "어학성적", "증빙서류", "주민등록등본", "건강진단서", "추천서", "과제",
 ];
 const REGION = /^(서울|경기|인천|부산|대구|대전|광주|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주|충청|전라|경상)/;
-const STEP_WORD = /서류|면접|인터뷰|과제|합격|최종|인적성|코딩|실기/;
+const STEP_WORD = /서류|면접|인터뷰|과제|합격|최종|인적성|코딩|실기|resume|interview|offer|test/i;
 // 첫 줄에서 회사 이름으로 볼 수 없는 낱말
 const GENERIC_WORD = /^(서비스|브랜드|콘텐츠|마케팅|사업|데이터|프로덕트|그로스|퍼포먼스|신입|경력|채용|공고|모집|인턴|정규직|계약직|\d)/;
 
@@ -115,6 +116,7 @@ const cutAtNextSection = (value: string) => {
 const stripLead = (line: string) =>
   line
     .replace(/^[^\p{L}\p{N}[<【〈]+/u, "")
+    .replace(/^[①-⑳]\s*/, "")
     .replace(/^[[<【〈]\s*([^\]>】〉]{1,12}?)\s*[\]>】〉]\s*/, "$1 : ")
     .replace(/^\d+[.)]\s*/, "");
 
@@ -131,18 +133,23 @@ function findLabelValue(lines: string[], key: Key, accept: (value: string) => bo
     if (/^[가-힣a-z]/i.test(after)) continue;
     const separated = /^\s*(및\s*방법\s*)?[:：|\-–]/.test(after) || /^\t/.test(after);
     const rest = after.replace(/^\s*(및\s*방법)?\s*[:：|\-–]?\s*/, "").trim();
-    if (rest) {
+    // "제출서류 : 온라인 이력서," 처럼 쉼표로 끝나면 다음 줄로 이어진다
+    const continues = rest && key === "requiredDocs" && /[,、]$/.test(rest);
+    if (rest && !continues) {
       if (WEAK_LABEL.test(m[0]) && !separated && !/^[\d~]/.test(rest)) continue;
       const value = cutAtNextSection(rest);
       if (value && accept(value)) return value;
       continue;
     }
     // 항목 이름 한 줄 뒤에 값이 오는 경우. 전형 절차·제출 서류는 여러 줄, 나머지는 한 줄
-    const count = key === "steps" || key === "requiredDocs" ? 6 : 1;
-    const following: string[] = [];
+    const count = key === "steps" ? 10 : key === "requiredDocs" ? 6 : 1;
+    const following: string[] = rest ? [rest] : [];
     for (const next of lines.slice(i + 1, i + 1 + count)) {
       const n = stripLead(next);
-      if (!n || isLabelLine(next) || /[:：]/.test(n) || n.length > 60) break;
+      // 지역 값은 "서울 : 성동구" 처럼 쌍점이 있어도 받는다
+      const regionValue = key === "location" && REGION.test(n);
+      if (!n || isLabelLine(next) || (/[:：]/.test(n) && !regionValue) || n.length > 80) break;
+      if (key === "requiredDocs" && /합격/.test(n)) continue; // "최종 합격 후 제출" 서류는 지원 때 내는 서류가 아니다
       following.push(n);
     }
     if (following.length) {
@@ -163,15 +170,17 @@ function emojiValue(lines: string[], key: Key) {
 
 function employmentFrom(value: string) {
   // 괄호 안 설명("3개월 후 정규직 전환 검토")과 "정규직 전환"은 고용 형태가 아니다
-  const main = value.replace(/\([^)]*\)/g, " ").replace(/정규직\s*전환/g, " ");
+  const main = value.replace(/\([^)]*\)/g, " ").replace(/정규직\s*전환/g, " ").replace(/파견\s*계약직/g, "파견");
   const found = EMPLOYMENT_WORDS.filter((w) => main.includes(w));
   const unique = found.filter((w) => !found.some((o) => o !== w && o.includes(w)));
   if (unique.length) return unique.map((w) => (w === "파견직" ? "파견" : w)).join(", ");
   return EMPLOYMENT_ENGLISH.find(([re]) => re.test(main))?.[1] ?? null;
 }
 
+// 괄호 안까지 세어 낱말이 딱 하나일 때만 (공채처럼 직무마다 다르면 비워 둔다)
 function soleEmployment(text: string) {
-  const found = employmentFrom(text.replace(/[a-z-]+/gi, " "));
+  const raw = text.replace(/[a-z-]+/gi, " ").replace(/\(/g, " ").replace(/\)/g, " ");
+  const found = employmentFrom(raw);
   return found && !found.includes(",") ? found : null;
 }
 
@@ -180,12 +189,18 @@ function stepsFrom(value: string) {
     .replace(/\uFE0F/g, "")
     .split(/\s*(?:→|->|⇒|➡|▶|▷|〉|›|>|＞|\s-\s|,|\/|\d+\s*[.)]\s)\s*/)
     .map((s) => s.replace(/^\d+\s*[.)]\s*/, "").replace(/[()]/g, " ").replace(/\s+/g, " ").trim())
-    .filter((s) => s.length > 0 && s.length <= 20 && !/지원\s*방법|접수\s*방법|유의\s*사항|문의/.test(s));
-  return parts.length >= 2 ? [...new Set(parts)].slice(0, 8) : [];
+    .filter((s) => s.length > 0 && s.length <= 20 && !/지원\s*방법|접수\s*방법|유의\s*사항|문의|^step\s*\d+$/i.test(s));
+  // 단계 같은 낱말이 절반은 있어야 전형 절차로 본다 (직무 분류표 등을 잘못 읽지 않게)
+  const stepLike = parts.filter((s) => STEP_WORD.test(s)).length;
+  return parts.length >= 2 && stepLike * 2 >= parts.length ? [...new Set(parts)].slice(0, 8) : [];
 }
 
 function docsFrom(value: string) {
-  const items = value.split(/\s*(?:,|\/|·|、|및|\+|→|\s와\s)\s*/).map((s) => s.trim()).filter(Boolean);
+  const items = value
+    .replace(/포토폴리오/g, "포트폴리오")
+    .split(/\s*(?:,|\/|·|、|및|\+|→|\s와\s)\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   // 목록에 없는 서류 이름은 짧고 설명이 아닐 때만 ("희망연봉 필수 기재" 같은 안내는 뺀다)
   const docs = items.map((item) => DOC_WORDS.find((w) => item.includes(w)) ?? (item.length <= 15 && !/기재|필수|작성|선택|제출/.test(item) ? item : null));
   return [...new Set(docs.filter((d): d is string => !!d))].slice(0, 8);
@@ -224,7 +239,9 @@ function timeFrom(after: string) {
 type Deadline = Pick<KeywordFields, "deadlineKind" | "deadlineDate" | "deadlineTime">;
 const NO_DEADLINE: Deadline = { deadlineKind: null, deadlineDate: null, deadlineTime: null };
 
-function deadlineFrom(value: string, now: Date, allowShort = true): Deadline | null {
+function deadlineFrom(raw: string, now: Date, allowShort = true): Deadline | null {
+  // "2026-11-06 08시 ~ 채용시": 기간이면 물결 뒤가 마감이다. 앞 날짜는 시작일
+  const value = raw.includes("~") ? raw.slice(raw.lastIndexOf("~") + 1) : raw;
   const found = dateFrom(value, now, allowShort);
   if (found) return { deadlineKind: "date", deadlineDate: found.date, deadlineTime: timeFrom(value.slice(found.end)) };
   if (/상시/.test(value)) return { deadlineKind: "rolling", deadlineDate: null, deadlineTime: null };
@@ -252,7 +269,7 @@ function readDeadline(lines: string[], text: string, now: Date): Deadline {
 const bareCompany = (name: string) => name.replace(/\(주\)|（주）|㈜|주식회사/g, "").trim();
 const tidyHeadline = (title: string) =>
   title
-    .replace(/\s*\((?:~|D-)[^)]*\)\s*$/i, "")
+    .replace(/\s*\((?:~|D-|\d+\s*명)[^)]*\)\s*$/i, "")
     .replace(/\s*(채용\s*공고|채용|모집\s*공고|모집)\s*[.!]*$/, "")
     .trim();
 
@@ -264,13 +281,20 @@ function fromHeadline(lines: string[]) {
     const bracket = /^\[([^\]]{1,30})\]\s*(.*)$/.exec(line);
     if (bracket && !LABELS.company.test(bracket[1])) {
       // "[디자인 채용 2차] BX · UI" 처럼 괄호 안이 회사 이름이 아닌 경우가 많다 → 그때는 직무만
-      const notCompany = GENERIC_WORD.test(bracket[1]) || /채용|모집|공고|\d\s*차|부문|디자이너|마케터|기획|개발자|매니저|담당/.test(bracket[1]);
+      const notCompany = GENERIC_WORD.test(bracket[1]) || /채용|모집|공고|\d\s*차|부문|디자이너|마케터|기획|개발자|매니저|담당|多|복리후생|스펙|급구|우대/.test(bracket[1]);
       return { company: notCompany ? null : bareCompany(bracket[1]), jobTitle: tidyHeadline(bracket[2]) || null };
     }
     const sentence = /^(\S+?)에서\s+(.+?)(?:을|를)\s*(?:모집|채용|찾)/.exec(line);
-    if (sentence) return { company: bareCompany(sentence[1]), jobTitle: sentence[2].replace(/^함께할\s*/, "").trim() || null };
+    if (sentence) {
+      const title = sentence[2].replace(/^함께할\s*/, "").trim();
+      return { company: bareCompany(sentence[1]), jobTitle: title && title.length <= 30 ? title : null };
+    }
     const corp = /^(?:\(주\)|（주）|㈜|주식회사\s*)(\S+)\s*(.*)$/.exec(line);
-    if (corp) return { company: corp[1], jobTitle: tidyHeadline(corp[2]) || null };
+    if (corp) {
+      const name = corp[1].replace(/(은|는|이|가)$/, "");
+      const title = tidyHeadline(corp[2]);
+      return { company: name, jobTitle: title && title.length <= 30 && name === corp[1] ? title : null };
+    }
     // "OO 채용" 줄의 첫 낱말은 회사일 때도 직무일 때도 있어 회사로 짐작하지 않는다 (실제 공고에서 틀림)
     if (/(채용|모집)(\s*공고)?\s*[.!]*$/.test(line)) return { company: null, jobTitle: tidyHeadline(line) || null };
   }
@@ -283,14 +307,24 @@ function locationFromSentence(text: string) {
   return m && REGION.test(m[1].trim()) ? m[1].trim() : null;
 }
 
-// 문장 속 제출 서류: "이력서와 자기소개서를 제출해 주세요"
+const tidyLocation = (value: string) =>
+  value
+    .replace(/\s*(지도\s*보기|길찾기).*$/, "")
+    .replace(/^주소\s*/, "")
+    .replace(/^\(\d{5}\)\s*/, "")
+    .replace(/^([가-힣]{2,4})\s*:\s*/, "$1 ")
+    .replace(/\s*→\s*/g, ", ")
+    .slice(0, 60)
+    .trim() || null;
+
+// 문장 속 제출 서류: "이력서와 자기소개서를 제출해 주세요" · "포트폴리오 필수 첨부"
 function docsFromSentence(lines: string[]) {
+  const found = new Set<string>();
   for (const line of lines) {
-    if (!/제출|첨부/.test(line) || /우대/.test(line)) continue;
-    const docs = DOC_WORDS.filter((w) => line.includes(w));
-    if (docs.length) return docs;
+    if (!/제출|첨부|필수/.test(line) || /우대|합격|허위|반환/.test(line) || line.length > 80) continue;
+    for (const w of DOC_WORDS) if (w !== "과제" && line.replace(/포토폴리오/g, "포트폴리오").includes(w)) found.add(w);
   }
-  return [];
+  return [...found];
 }
 
 // 항목 이름 없는 전형 절차: "서류 ➡️ 면접 ➡️ 최종" · "서류 심사, 면접, 최종 합격 순서로"
@@ -299,7 +333,8 @@ function stepsFromSentence(lines: string[]) {
     const clean = stripLead(line.replace(/\uFE0F/g, ""));
     const ordered = /^(?:전형은\s*)?(.+?)\s*(?:의\s*)?(?:순서로|순으로)/.exec(clean);
     const candidate = ordered ? ordered[1] : /(→|➡|▶|>|＞)/.test(clean) ? clean : null;
-    if (candidate && STEP_WORD.test(candidate)) {
+    // 항목 이름이 없으면 첫 단계가 서류·지원·접수일 때만 전형 절차로 본다 (직무 분류표 "인사 > 담당분야 > 면접" 등)
+    if (candidate && /^\s*(서류|지원|접수|입사\s*지원)/.test(candidate)) {
       const steps = stepsFrom(candidate);
       if (steps.length >= 2) return steps;
     }
@@ -315,8 +350,10 @@ export function readKeywordFields(text: string, now: Date = new Date()): Keyword
     .filter(Boolean);
   const body = lines.join("\n");
 
-  const companyLabel = findLabelValue(lines, "company") ?? emojiValue(lines, "company");
-  const titleLabel = findLabelValue(lines, "jobTitle") ?? emojiValue(lines, "jobTitle");
+  // 값이 문장처럼 길면 항목 값이 아니다 (표 머리글 다음 줄의 소개 글 등)
+  const shortValue = (max: number) => (v: string) => v.length <= max && !/니다[.!]?$/.test(v);
+  const companyLabel = findLabelValue(lines, "company", shortValue(30)) ?? emojiValue(lines, "company");
+  const titleLabel = findLabelValue(lines, "jobTitle", shortValue(40)) ?? emojiValue(lines, "jobTitle");
   const headline = fromHeadline(lines);
   const guessed: KeywordFields["guessed"] = [];
   if (!companyLabel && headline.company) guessed.push("company");
@@ -325,17 +362,18 @@ export function readKeywordFields(text: string, now: Date = new Date()): Keyword
   const employment = findLabelValue(lines, "employmentType", (v) => employmentFrom(v) !== null);
   // 같은 항목이 여럿이면 지역 이름으로 시작하는 값을 먼저 쓴다
   const location = findLabelValue(lines, "location", (v) => REGION.test(v)) ?? findLabelValue(lines, "location") ?? emojiValue(lines, "location") ?? locationFromSentence(body);
+  const address = location ?? findLabelValue(lines, "address", (v) => REGION.test(v));
   const steps = findLabelValue(lines, "steps", (v) => stepsFrom(v).length >= 2);
   const docs = findLabelValue(lines, "requiredDocs", (v) => docsFrom(v).length > 0);
 
   return {
     company: companyLabel ? bareCompany(companyLabel) : headline.company,
-    jobTitle: titleLabel ?? headline.jobTitle,
+    jobTitle: titleLabel ? tidyHeadline(titleLabel) : headline.jobTitle,
     // 항목 이름이 없으면 본문 앞부분에 고용 형태 낱말이 딱 하나 있을 때만 쓴다
     employmentType: employment ? employmentFrom(employment) : soleEmployment(body.slice(0, 2000)),
-    location: location ? location.replace(/\s*(지도\s*보기|길찾기).*$/, "").slice(0, 60).trim() || null : null,
+    location: address ? tidyLocation(address) : null,
     steps: steps ? stepsFrom(steps) : stepsFromSentence(lines),
-    requiredDocs: docs ? docsFrom(docs) : docsFromSentence(lines),
+    requiredDocs: [...new Set([...(docs ? docsFrom(docs) : []), ...docsFromSentence(lines)])],
     ...readDeadline(lines, body, now),
     guessed,
   };

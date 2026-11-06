@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 .claude/settings.local.json
+
+# 비교용 실제 공고 자료 (커밋하지 않음)
+tests/.local/

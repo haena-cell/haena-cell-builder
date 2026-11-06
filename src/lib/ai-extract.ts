@@ -110,8 +110,8 @@ export function mergeAi(posting: ExtractedPosting, ai: AiPosting): ExtractedPost
   next.companySize ||= ai.companySize?.trim() || null;
 
   // 같은 마감 날짜를 키워드로 이미 읽었고 AI 가 시각까지 읽었으면 시각만 더한다
-  // "23:59" 는 날짜만 아는 것과 같다 (시각 없이 그날까지)
-  const aiTime = ai.deadlineTime && /^\d{2}:\d{2}$/.test(ai.deadlineTime) && ai.deadlineTime !== "23:59" ? ai.deadlineTime : null;
+  // "23:59"·"24:00" 은 날짜만 아는 것과 같다 (시각 없이 그날까지). 24:00 을 그대로 쓰면 다음 날이 된다
+  const aiTime = ai.deadlineTime && /^\d{2}:\d{2}$/.test(ai.deadlineTime) && !["23:59", "24:00"].includes(ai.deadlineTime) ? ai.deadlineTime : null;
   if (next.deadlineAt && !next.deadlineTimeKnown && aiTime && ai.deadlineDate === new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(next.deadlineAt))) {
     next.deadlineAt = new Date(`${ai.deadlineDate}T${aiTime}:00+09:00`).toISOString();
     next.deadlineTimeKnown = true;
