@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { PageTitle } from "@/components/postings/page-title";
+import { DeadlineWeek } from "@/components/postings/deadline-week";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { PostingEditForm } from "@/components/postings/posting-edit-form";
 import { PrepTodos } from "@/components/postings/prep-todos";
@@ -40,7 +41,7 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Posting; nowIso: string }) {
   const router = useRouter();
   const href = useAppHref();
-  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePosting } = usePostingActions();
+  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePostingFull } = usePostingActions();
   const [posting, setPosting] = useState(initialPosting);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -129,20 +130,31 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
       </PageTitle>
 
       {editing ? (
-        <Card className="px-4 md:px-6">
-          <PostingEditForm
-            posting={posting}
-            onCancel={() => setEditing(false)}
-            onSave={async (next) => {
-              const result = await updatePosting(posting.id, next);
-              if (!result.ok) return result.message;
-              setPosting(next);
-              setEditing(false);
-              toast("고친 내용을 저장했어요");
-              return null;
-            }}
-          />
-        </Card>
+        <div className="grid items-start gap-4 lg:grid-cols-[3fr_2fr]">
+          <Card className="min-w-0 px-4 md:px-6">
+            <PostingEditForm
+              posting={posting}
+              onCancel={() => setEditing(false)}
+              onSave={async (next) => {
+                const result = await updatePostingFull(posting.id, next, next.steps);
+                if (!result.ok) return result.message;
+                setPosting({ ...next, steps: result.steps });
+                setEditing(false);
+                toast("고친 내용을 저장했어요");
+                return null;
+              }}
+            />
+          </Card>
+          <Section title="준비 항목" aside={<span className="text-xs text-muted-foreground">고치면 바로 저장돼요</span>}>
+            <PrepTodos
+              postingId={posting.id}
+              items={posting.prepItems}
+              today={kstDateKey(now)}
+              editMode
+              onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
+            />
+          </Section>
+        </div>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <div className="flex min-w-0 flex-col gap-4">
@@ -204,6 +216,9 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
             {/* 마감 */}
             <Section title="마감">
               <p className="text-base font-semibold tabular-nums">{formatDeadline(posting)}</p>
+              {posting.deadlineKind === "date" && posting.deadlineAt && (
+                <DeadlineWeek deadline={kstDateKey(new Date(posting.deadlineAt))} today={kstDateKey(now)} />
+              )}
               {canAddToCalendar(posting) ? (
                 <div className="flex flex-wrap gap-2">
                   {googleUrl && (

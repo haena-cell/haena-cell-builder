@@ -191,7 +191,7 @@ export function PostingList({
   const searchParams = useSearchParams();
   const href = useAppHref();
   const listHref = href("/app/postings");
-  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePosting, updatePostingMeta } = usePostingActions();
+  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePostingFull, updatePostingMeta } = usePostingActions();
   const [postings, setPostings] = useState(initialPostings);
   // 처음 그릴 때는 서버가 센 D-day, 그 뒤에는 브라우저에서 센다
   const [now, setNow] = useState<Date | null>(null);
@@ -267,9 +267,9 @@ export function PostingList({
   }
 
   async function saveEdit(next: Posting) {
-    const result = await updatePosting(next.id, next);
+    const result = await updatePostingFull(next.id, next, next.steps);
     if (!result.ok) return result.message;
-    replace(next.id, () => next);
+    replace(next.id, () => ({ ...next, steps: result.steps }));
     setEditing(null);
     toast("고친 내용을 저장했어요");
     return null;
@@ -487,10 +487,10 @@ export function PostingList({
         </ul>
       )}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>공고 편집</DialogTitle>
-            <DialogDescription>전형 단계와 준비 항목은 공고 상세에서 바꿔요.</DialogDescription>
+            <DialogDescription>준비 항목은 공고 상세의 [수정]에서 바꿔요.</DialogDescription>
           </DialogHeader>
           {editing && <PostingEditForm key={editing.id} posting={editing} onSave={saveEdit} onCancel={() => setEditing(null)} />}
         </DialogContent>

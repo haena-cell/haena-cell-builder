@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, ExternalLink, Plus, X } from "lucide-react";
+import { AlertCircle, ChevronDown, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DocPicker, newStepItem, StepEditor, type StepItem } from "@/components/postings/posting-field-editors";
 import { Segmented } from "@/components/postings/segmented";
 import { cn } from "@/lib/utils";
 import type { DeadlineKind } from "@/lib/postings";
@@ -17,7 +18,6 @@ import { clearDraft, loadDraft, type Draft } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
 const DEFAULT_STEPS = ["서류 제출", "서류 결과", "면접", "최종 결과"];
-const DEFAULT_DOCS = ["이력서", "포트폴리오", "과제", "자기소개서"];
 
 const DEADLINE_KINDS: { value: DeadlineKind; label: string }[] = [
   { value: "date", label: "날짜" },
@@ -95,11 +95,8 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
   const [location, setLocation] = useState(p.location ?? "");
   const [employmentType, setEmploymentType] = useState(p.employmentType ?? "");
   const [companySize, setCompanySize] = useState(p.companySize ?? "");
-  const [docOptions, setDocOptions] = useState(() => [...new Set([...DEFAULT_DOCS, ...p.requiredDocs])]);
   const [docs, setDocs] = useState(p.requiredDocs);
-  const [newDoc, setNewDoc] = useState("");
-  const [steps, setSteps] = useState(usedDefaultSteps ? DEFAULT_STEPS : p.steps);
-  const [newStep, setNewStep] = useState("");
+  const [steps, setSteps] = useState<StepItem[]>(() => (usedDefaultSteps ? DEFAULT_STEPS : p.steps).map(newStepItem));
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [showSource, setShowSource] = useState(false);
@@ -120,36 +117,6 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
   // 여러 직무 공고는 고르거나 고칠 때까지 직무 칸을 확인 칸으로 둔다 (D-43)
   const isUnsure = (key: string) => (p.unsure.includes(key) || (key === "jobTitle" && jobOptions.length >= 2)) && !touched.has(key);
   const touch = (key: string) => setTouched((prev) => new Set(prev).add(key));
-
-  function toggleDoc(doc: string) {
-    setDocs((prev) => (prev.includes(doc) ? prev.filter((d) => d !== doc) : [...prev, doc]));
-    touch("requiredDocs");
-  }
-
-  function addDoc() {
-    const doc = newDoc.trim();
-    if (!doc) return;
-    setDocOptions((prev) => (prev.includes(doc) ? prev : [...prev, doc]));
-    setDocs((prev) => (prev.includes(doc) ? prev : [...prev, doc]));
-    setNewDoc("");
-  }
-
-  function moveStep(i: number, dir: -1 | 1) {
-    setSteps((prev) => {
-      const next = [...prev];
-      [next[i], next[i + dir]] = [next[i + dir], next[i]];
-      return next;
-    });
-    touch("steps");
-  }
-
-  function addStep() {
-    const step = newStep.trim();
-    if (!step) return;
-    setSteps((prev) => [...prev, step]);
-    setNewStep("");
-    touch("steps");
-  }
 
   function save() {
     if (!company.trim() || !jobTitle.trim()) return setError("기업명과 직무를 채워 주세요.");
@@ -177,7 +144,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         employmentType,
         companySize,
         requiredDocs: docs,
-        steps,
+        steps: steps.map((step) => step.name),
         sourceKind: draft.source.kind,
         sourceUrl: draft.source.url ?? null,
         sourceText: draft.source.kind === "text" ? draft.source.text : null,
@@ -333,17 +300,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         <div className="flex min-w-0 flex-col gap-4">
           <Panel title="제출 서류" aside={<span className="text-xs text-muted-foreground tabular-nums">{docs.length}개 선택</span>}>
             <Field label="눌러서 고르기" unsure={isUnsure("requiredDocs")}>
-              <div className="flex flex-wrap gap-2">
-                {docOptions.map((doc) => (
-                  <Button key={doc} type="button" variant="outline" size="sm" aria-pressed={docs.includes(doc)}
-                    className={cn(docs.includes(doc) && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
-                    onClick={() => toggleDoc(doc)}>
-                    {docs.includes(doc) && <Check data-icon="inline-start" />}
-                    {doc}
-                  </Button>
-                ))}
-              </div>
-              <AddInput placeholder="다른 서류 추가" value={newDoc} onChange={setNewDoc} onAdd={addDoc} label="서류 추가" />
+              <DocPicker value={docs} onChange={(next) => { setDocs(next); touch("requiredDocs"); }} />
             </Field>
           </Panel>
 
@@ -352,27 +309,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
               {usedDefaultSteps && !touched.has("steps") && (
                 <p className="px-1 text-xs text-muted-foreground">공고에서 절차를 못 읽어서 기본 단계로 채웠어요.</p>
               )}
-              <ol className="flex flex-col">
-                {steps.map((step, i) => (
-                  <li key={`${step}-${i}`} className="group flex items-center gap-3 py-1">
-                    <span className="flex flex-col items-center self-stretch">
-                      <span className={cn("w-px flex-1", i === 0 ? "bg-transparent" : "bg-input")} />
-                      <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground tabular-nums">
-                        {i + 1}
-                      </span>
-                      <span className={cn("w-px flex-1", i === steps.length - 1 ? "bg-transparent" : "bg-input")} />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate rounded-full bg-card px-3.5 py-2 text-sm ring-1 ring-border">{step}</span>
-                    <span className="flex shrink-0">
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`${step} 위로`} disabled={i === 0} onClick={() => moveStep(i, -1)}><ArrowUp /></Button>
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`${step} 아래로`} disabled={i === steps.length - 1} onClick={() => moveStep(i, 1)}><ArrowDown /></Button>
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`${step} 빼기`}
-                        onClick={() => { setSteps((prev) => prev.filter((_, j) => j !== i)); touch("steps"); }}><X /></Button>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <AddInput placeholder="단계 추가 (예: 2차 면접)" value={newStep} onChange={setNewStep} onAdd={addStep} label="단계 추가" />
+              <StepEditor items={steps} onChange={(next) => { setSteps(next); touch("steps"); }} />
             </Field>
           </Panel>
         </div>
@@ -419,23 +356,6 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
 }
 
 // 한 줄 입력 + [+] (Enter 로도 추가)
-function AddInput({ placeholder, value, onChange, onAdd, label }: {
-  placeholder: string;
-  value: string;
-  onChange: (value: string) => void;
-  onAdd: () => void;
-  label: string;
-}) {
-  return (
-    <div className="flex gap-2">
-      <Input placeholder={placeholder} aria-label={placeholder} className="h-10" value={value} maxLength={50}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); onAdd(); } }} />
-      <Button type="button" variant="outline" size="icon-lg" onClick={onAdd} aria-label={label}><Plus /></Button>
-    </div>
-  );
-}
-
 export function ReviewForm() {
   // 정리 결과는 이 탭 안에만 있으므로 브라우저에서 읽는다
   const [draft, setDraft] = useState<Draft | null | undefined>(undefined);

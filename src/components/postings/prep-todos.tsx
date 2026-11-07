@@ -124,11 +124,13 @@ export function PrepTodos({
   items,
   today,
   onItemsChange,
+  editMode = false,
 }: {
   postingId: string;
   items: Items;
   today: string;
   onItemsChange: (update: (items: Items) => Items) => void;
+  editMode?: boolean; // 공고 수정 화면: 모든 항목을 펼쳐 이름 바꾸기·지우기를 바로 보여 준다 (D-48)
 }) {
   const { addPrepItem, addSubtask, deletePrepItem, deleteSubtask, setPrepDone, updatePrepItem, updateSubtask } = usePostingActions();
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -203,7 +205,7 @@ export function PrepTodos({
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-2">
         {items.map((item) => {
-          const isOpen = open.has(item.id);
+          const isOpen = editMode || open.has(item.id);
           const subDone = item.subtasks.filter((t) => t.done).length;
           return (
             <li key={item.id} className="flex flex-col gap-2 rounded-2xl bg-muted px-2 py-2">

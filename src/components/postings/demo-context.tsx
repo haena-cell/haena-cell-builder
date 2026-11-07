@@ -21,10 +21,15 @@ export function useAppHref() {
 
 const ok = async () => ({ ok: true as const });
 const okWithId = async () => ({ ok: true as const, id: crypto.randomUUID() });
+const okWithSteps = async (_id: string, _fields: unknown, items: { id: string; name: string; completedAt?: string | null }[]) => ({
+  ok: true as const,
+  steps: items.map((s) => ({ id: s.id, name: s.name, completedAt: s.completedAt ?? null })),
+});
 
 // 화면에서 부르는 저장 기능. 둘러보기에서는 아무것도 저장하지 않는다
 const demoActions = {
   updatePosting: ok,
+  updatePostingFull: okWithSteps,
   updatePostingMeta: ok,
   deletePosting: ok,
   setStepCompleted: ok,

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pacemate — 공고 담기",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "보고 있는 채용 공고를 작은 창에서 정리해 내 Pacemate에 바로 저장해요.",
   "action": {
     "default_title": "이 공고를 Pacemate에 담기",

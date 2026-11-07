@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, House, List, ListChecks, Plus } from "lucide-react";
+import { CalendarDays, House, List, ListChecks, Plus, Puzzle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppHref } from "@/components/postings/demo-context";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,8 @@ const MENU = [
   { href: "/app/calendar", label: "달력", icon: CalendarDays },
   { href: "/app/todos", label: "할 일", icon: ListChecks },
 ] as const;
+// 컴퓨터 크롬에서만 쓰는 기능이라 왼쪽 메뉴바에만 (D-48)
+const SIDE_ONLY = [{ href: "/app/extension", label: "확장 프로그램", icon: Puzzle }] as const;
 
 // 첫 메뉴(홈)는 주소가 똑같을 때만 고른 것으로
 const isActive = (pathname: string, href: string, home: string) =>
@@ -24,7 +26,7 @@ export function SideNav() {
   const toHref = useAppHref();
   return (
     <nav className="flex flex-col gap-1" aria-label="메뉴">
-      {MENU.map(({ href: appHref, label, icon: Icon }) => {
+      {[...MENU, ...SIDE_ONLY].map(({ href: appHref, label, icon: Icon }) => {
         const href = toHref(appHref);
         const active = isActive(pathname, href, toHref("/app"));
         return (

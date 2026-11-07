@@ -1,4 +1,4 @@
-import { createPosting } from "@/lib/posting-actions";
+import { createPosting, updatePostingFull } from "@/lib/posting-actions";
 import type { DeadlineKind } from "@/lib/postings";
 
 // 크롬 확장 팝업에서 공고 저장 (D-47). 로그인 안 하면 proxy.ts 가 401 로 막고, 데이터는 RLS 로 본인 것만 저장된다
@@ -37,5 +37,39 @@ export async function POST(request: Request) {
     sourceText: null,
     aiRaw: rawSize <= MAX_RAW ? ((body.aiRaw ?? null) as Parameters<typeof createPosting>[0]["aiRaw"]) : null,
   });
+  return Response.json(result, { status: result.ok ? 200 : 400 });
+}
+
+// 이미 저장한 공고 고치기 (D-48)
+export async function PATCH(request: Request) {
+  if (!allowedOrigin(request)) return Response.json({ ok: false, message: "잘못된 요청이에요." }, { status: 403 });
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return Response.json({ ok: false, message: "잘못된 요청이에요." }, { status: 400 });
+  }
+  const id = text(body.id);
+  if (!id) return Response.json({ ok: false, message: "잘못된 요청이에요." }, { status: 400 });
+  const items = (Array.isArray(body.steps) ? body.steps : [])
+    .slice(0, 21)
+    .map((s) => s as { id?: unknown; name?: unknown })
+    .filter((s) => typeof s?.id === "string" && typeof s?.name === "string")
+    .map((s) => ({ id: s.id as string, name: s.name as string }));
+  const result = await updatePostingFull(
+    id,
+    {
+      company: text(body.company) ?? "",
+      jobTitle: text(body.jobTitle) ?? "",
+      deadlineKind: body.deadlineKind as DeadlineKind, // 값은 updatePostingFull 이 확인한다
+      deadlineAt: text(body.deadlineAt),
+      deadlineTimeKnown: body.deadlineTimeKnown === true,
+      location: text(body.location),
+      employmentType: text(body.employmentType),
+      companySize: text(body.companySize),
+      requiredDocs: strings(body.requiredDocs),
+    },
+    items,
+  );
   return Response.json(result, { status: result.ok ? 200 : 400 });
 }

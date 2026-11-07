@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DocPicker, StepEditor, type StepItem } from "@/components/postings/posting-field-editors";
 import { Segmented } from "@/components/postings/segmented";
-import type { DeadlineKind, Posting } from "@/lib/postings";
+import { arrangeSteps, type DeadlineKind, type Posting } from "@/lib/postings";
 
-// 공고 기본 정보 고치기 (기업명·직무·마감·근무 정보). 공고 상세와 목록의 [편집] 창에서 함께 쓴다 (D-32)
+// 공고 고치기: 기본 정보 + 제출 서류 + 전형 절차 (D-48). 공고 상세와 목록의 [편집] 창에서 함께 쓴다
 
 const DEADLINE_KINDS: { value: DeadlineKind; label: string }[] = [
   { value: "date", label: "날짜" },
@@ -41,6 +42,8 @@ export function PostingEditForm({
   const [location, setLocation] = useState(posting.location ?? "");
   const [employmentType, setEmploymentType] = useState(posting.employmentType ?? "");
   const [companySize, setCompanySize] = useState(posting.companySize ?? "");
+  const [docs, setDocs] = useState(posting.requiredDocs);
+  const [steps, setSteps] = useState<StepItem[]>(posting.steps.map((step) => ({ id: step.id, name: step.name })));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -48,6 +51,7 @@ export function PostingEditForm({
     e.preventDefault();
     if (!company.trim() || !jobTitle.trim()) return setError("기업명과 직무를 채워 주세요.");
     if (deadlineKind === "date" && !date) return setError("마감 날짜를 골라 주세요.");
+    if (steps.length === 0) return setError("전형 단계를 하나 이상 넣어 주세요.");
     setSaving(true);
     const problem = await onSave({
       ...posting,
@@ -59,6 +63,8 @@ export function PostingEditForm({
       location: location.trim() || null,
       employmentType: employmentType.trim() || null,
       companySize: companySize.trim() || null,
+      requiredDocs: docs,
+      steps: arrangeSteps(posting.steps, steps),
     });
     setSaving(false);
     setError(problem);
@@ -99,6 +105,15 @@ export function PostingEditForm({
           <Label htmlFor={`edit-size-${posting.id}`}>기업 규모</Label>
           <Input id={`edit-size-${posting.id}`} value={companySize} onChange={(e) => setCompanySize(e.target.value)} />
         </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label>제출 서류</Label>
+        <DocPicker value={docs} onChange={setDocs} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label>전형 절차</Label>
+        <p className="text-xs text-muted-foreground">손잡이를 잡고 끌거나 화살표로 순서를 바꿔요. 지금 진행 중인 단계는 그대로 유지돼요.</p>
+        <StepEditor items={steps} onChange={setSteps} />
       </div>
       {error && <p className="rounded-2xl bg-destructive-soft px-4 py-3 text-sm text-destructive" role="alert">{error}</p>}
       <div className="flex justify-end gap-2">

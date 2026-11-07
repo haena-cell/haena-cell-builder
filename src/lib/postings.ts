@@ -111,6 +111,22 @@ export function withCurrentStep(steps: PostingStep[], current: number, now = new
   return steps.map((s, i) => ({ ...s, completedAt: i < current ? (s.completedAt ?? now) : null }));
 }
 
+// 전형 단계를 고친 뒤의 진행 상태 (D-48). 지금 단계는 유지하고, 그 앞은 끝남·뒤는 남음으로 맞춘다.
+// 지금 단계를 지웠으면 그다음 남은 단계, 그것도 없으면 새로 넣은 첫 단계가 지금 단계가 된다
+export function arrangeSteps(old: PostingStep[], items: { id: string; name: string }[], now = new Date().toISOString()): PostingStep[] {
+  const kept = new Set(items.map((i) => i.id));
+  const oldById = new Map(old.map((s) => [s.id, s]));
+  const oldCurrent = currentStepIndex(old);
+  const anchor = oldCurrent >= 0 ? old.slice(oldCurrent).find((s) => kept.has(s.id)) : undefined;
+  const position = anchor ? items.findIndex((i) => i.id === anchor.id) : items.findIndex((i) => !oldById.has(i.id));
+  const current = position < 0 ? items.length : position;
+  return items.map((item, i) => ({
+    id: item.id,
+    name: item.name,
+    completedAt: i < current ? (oldById.get(item.id)?.completedAt ?? now) : null,
+  }));
+}
+
 // 할 일 마감 날짜(YYYY-MM-DD)까지 남은 날 수 (today 도 한국 날짜)
 export function daysToDate(dueDate: string, today: string) {
   return Math.round((Date.parse(dueDate) - Date.parse(today)) / DAY_MS);

@@ -1,4 +1,4 @@
-# Pacemate 크롬 확장 프로그램 (D-33, D-47)
+# Pacemate 크롬 확장 프로그램 (D-33, D-47, D-48)
 
 보고 있는 채용 공고 화면에서 아이콘을 누르면, 그 화면의 글(이미지 공고면 화면 캡처)을 Pacemate로 보내 정리하고, 아이콘 아래 작은 창에서 확인한 뒤 바로 저장해요.
 
@@ -6,7 +6,7 @@
 1. 크롬 주소창에 `chrome://extensions` 를 입력해 열어요.
 2. 오른쪽 위 **개발자 모드**를 켜요.
 3. **압축해제된 확장 프로그램을 로드합니다**를 눌러요.
-4. 이 `extension` 폴더(`1018_01/extension`)를 골라요.
+4. 압축을 푼 `pacemate-extension` 폴더(저장소에서는 `extension` 폴더)를 골라요.
 5. 크롬 오른쪽 위 퍼즐 모양 아이콘 → Pacemate 옆 **고정(핀)** 을 누르면 아이콘이 항상 보여요.
 
 ## 쓰는 법
@@ -23,5 +23,8 @@
 - 비밀번호나 키를 저장하지 않아요. 같은 크롬의 Pacemate 로그인을 그대로 써요.
 
 ## 고친 뒤 다시 불러오기
-`popup.js` 등을 고쳤으면 `chrome://extensions` 에서 Pacemate의 **새로고침(↻)** 을 눌러요.
+`popup.js` 등을 고쳤거나 새 파일을 받았으면 `chrome://extensions` 에서 Pacemate의 **새로고침(↻)** 을 눌러요.
 개발 중 이 컴퓨터(localhost)로 보내려면 `popup.js` 의 `APP` 을 `http://localhost:3000` 으로 바꿔요.
+
+## 배포용 파일 만들기
+`extension` 안의 파일을 고쳤으면 `npm run ext:zip` 으로 `public/pacemate-extension.zip` 을 다시 만들어 함께 커밋해요. 메뉴의 [확장 프로그램] 화면이 이 파일을 내려받게 해요.

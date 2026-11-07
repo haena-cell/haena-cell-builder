@@ -18,8 +18,9 @@
 
   <section id="notice" hidden>
     <p id="noticeText"></p>
-    <div class="row">
+    <div class="stack">
       <button id="noticeAction" class="primary" type="button"></button>
+      <button id="noticeAction2" class="secondary" type="button"></button>
     </div>
   </section>
 
@@ -59,9 +60,14 @@
       <label class="field" data-key="requiredDocs"><span>제출 서류 (쉼표로 구분)</span>
         <input id="requiredDocs">
       </label>
-      <label class="field" data-key="steps"><span>전형 절차 (한 줄에 한 단계)</span>
-        <textarea id="steps" rows="4"></textarea>
-      </label>
+      <div class="field" data-key="steps">
+        <span>전형 절차</span>
+        <ol id="stepList"></ol>
+        <div class="addrow">
+          <input id="newStep" maxlength="50" placeholder="단계 추가 (예: 2차 면접)" aria-label="단계 추가">
+          <button id="addStep" type="button" aria-label="단계 추가">+</button>
+        </div>
+      </div>
     </details>
 
     <p id="formError" class="error" role="alert" hidden></p>

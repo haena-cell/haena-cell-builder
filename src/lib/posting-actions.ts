@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { defaultPrepLabels, PRIORITIES, type DeadlineKind, type Priority } from "@/lib/postings";
+import { arrangeSteps, defaultPrepLabels, PRIORITIES, type DeadlineKind, type PostingStep, type Priority } from "@/lib/postings";
 import { normalizeSourceUrl } from "@/lib/source-url";
 import type { ExtractedPosting } from "@/lib/extract-posting";
 import type { Json } from "@/lib/database.types";
@@ -112,6 +112,65 @@ export async function updatePosting(id: string, fields: PostingFields): Promise<
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("postings").update(fieldsToRow(fields)).eq("id", id).select("id");
   return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+}
+
+// 공고 전체 고치기: 기본 정보 + 제출 서류 + 전형 절차 (D-48). 단계 진행 상태는 서버에서 다시 계산한다
+export async function updatePostingFull(
+  id: string,
+  fields: PostingFields & { requiredDocs: string[] },
+  items: { id: string; name: string }[],
+): Promise<ActionResult<{ steps: PostingStep[] }>> {
+  const problem = checkFields(fields);
+  if (problem) return { ok: false, message: problem };
+  const names = items.map((s) => ({ id: s.id, name: s.name.trim() })).filter((s) => s.name.length > 0 && s.name.length <= 50);
+  if (names.length === 0) return { ok: false, message: "전형 단계를 하나 이상 넣어 주세요." };
+  if (names.length > 20) return { ok: false, message: "전형 단계는 20개까지 넣을 수 있어요." };
+  const docs = [...new Set(fields.requiredDocs.map((d) => d.trim()).filter((d) => d.length > 0 && d.length <= 50))].slice(0, 20);
+
+  const supabase = await createSupabaseServer();
+  const { data: updated, error } = await supabase
+    .from("postings")
+    .update({ ...fieldsToRow(fields), required_docs: docs })
+    .eq("id", id)
+    .select("id");
+  if (error || updated.length !== 1) return { ok: false, message: FAILED };
+
+  const { data: rows, error: readError } = await supabase
+    .from("posting_steps")
+    .select("id, name, position, completed_at")
+    .eq("posting_id", id)
+    .order("position");
+  if (readError || !rows) return { ok: false, message: FAILED };
+  const old: PostingStep[] = rows.map((r) => ({ id: r.id, name: r.name, completedAt: r.completed_at }));
+  const oldIds = new Set(old.map((s) => s.id));
+  const next = arrangeSteps(old, names);
+
+  // 순서 번호가 겹치면 안 되는 규칙이 있어: 지울 단계 지우기 → 남는 단계를 뒤 번호로 비키기 → 제자리로
+  const keptIds = new Set(next.map((s) => s.id));
+  const removed = rows.filter((r) => !keptIds.has(r.id)).map((r) => r.id);
+  if (removed.length > 0) {
+    const { error: e } = await supabase.from("posting_steps").delete().in("id", removed);
+    if (e) return { ok: false, message: FAILED };
+  }
+  const kept = rows.filter((r) => keptIds.has(r.id));
+  const parked = await Promise.all(kept.map((r) => supabase.from("posting_steps").update({ position: r.position + 1000 }).eq("id", r.id)));
+  if (parked.some((r) => r.error)) return { ok: false, message: FAILED };
+  const saved = await Promise.all(
+    next.map((s, i) =>
+      oldIds.has(s.id)
+        ? supabase.from("posting_steps").update({ position: i + 1, name: s.name, completed_at: s.completedAt }).eq("id", s.id)
+        : supabase.from("posting_steps").insert({ posting_id: id, position: i + 1, name: s.name, completed_at: s.completedAt }),
+    ),
+  );
+  if (saved.some((r) => r.error)) return { ok: false, message: FAILED };
+
+  const { data: finalRows, error: finalError } = await supabase
+    .from("posting_steps")
+    .select("id, name, completed_at")
+    .eq("posting_id", id)
+    .order("position");
+  if (finalError || !finalRows) return { ok: false, message: FAILED };
+  return { ok: true, steps: finalRows.map((r) => ({ id: r.id, name: r.name, completedAt: r.completed_at })) };
 }
 
 // 목록 줄에서 고르는 우선순위·근로형태 (D-26)
