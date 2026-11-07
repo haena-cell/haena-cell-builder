@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Pacemate</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="mark" aria-hidden="true">P</span>
+    <strong>Pacemate</strong>
+    <span class="beta">웹 베타</span>
+  </header>
+
+  <section id="loading" hidden>
+    <ul id="stages" role="status" aria-live="polite"></ul>
+  </section>
+
+  <section id="notice" hidden>
+    <p id="noticeText"></p>
+    <div class="row">
+      <button id="noticeAction" class="primary" type="button"></button>
+    </div>
+  </section>
+
+  <form id="form" hidden novalidate>
+    <label class="field"><span>링크</span>
+      <a id="link" target="_blank" rel="noreferrer"></a>
+    </label>
+    <label class="field" data-key="company"><span>기업명</span>
+      <input id="company" maxlength="100" required>
+    </label>
+    <div class="field" data-key="jobTitle">
+      <label for="jobTitle">직무</label>
+      <div id="jobOptionsBox" hidden>
+        <p class="help">여러 직무를 모집해요. 지원할 직무를 골라 주세요.</p>
+        <div id="jobOptions" class="chips" role="radiogroup" aria-label="지원할 직무"></div>
+      </div>
+      <input id="jobTitle" maxlength="100" required>
+    </div>
+    <fieldset class="field" data-key="deadline">
+      <legend>마감일</legend>
+      <div class="segments" role="radiogroup" aria-label="마감 종류">
+        <label><input type="radio" name="kind" value="date"><span>날짜</span></label>
+        <label><input type="radio" name="kind" value="rolling"><span>상시</span></label>
+        <label><input type="radio" name="kind" value="until_filled"><span>채용 시 마감</span></label>
+      </div>
+      <input id="date" type="date" aria-label="마감 날짜">
+    </fieldset>
+
+    <details id="more">
+      <summary>더보기 <span id="moreCount"></span></summary>
+      <label class="field" data-key="location"><span>근무지</span>
+        <input id="location" maxlength="100">
+      </label>
+      <label class="field" data-key="employmentType"><span>근무 형태</span>
+        <input id="employmentType" maxlength="50">
+      </label>
+      <label class="field" data-key="requiredDocs"><span>제출 서류 (쉼표로 구분)</span>
+        <input id="requiredDocs">
+      </label>
+      <label class="field" data-key="steps"><span>전형 절차 (한 줄에 한 단계)</span>
+        <textarea id="steps" rows="4"></textarea>
+      </label>
+    </details>
+
+    <p id="formError" class="error" role="alert" hidden></p>
+    <button id="save" class="primary" type="submit">저장</button>
+  </form>
+  <script src="popup.js"></script>
+</body>
+</html>

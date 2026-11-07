@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles, X } from "lucide-react";
+import { ExtractProgress } from "@/components/postings/extract-progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -300,15 +301,7 @@ export function NewPostingForm() {
         </Button>
       </form>
 
-      {loading && (
-        <div className="flex items-center gap-3 rounded-2xl bg-muted px-4 py-3" role="status">
-          <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
-          <div className="text-sm">
-            <p className="font-medium">공고를 읽고 있어요</p>
-            <p className="text-xs text-muted-foreground">페이지 정보를 먼저 읽고, 빈 칸은 AI가 채워요. 보통 5~20초 걸려요.</p>
-          </div>
-        </div>
-      )}
+      {loading && <ExtractProgress />}
       {error && (
         <p className="rounded-2xl bg-destructive-soft px-4 py-3 text-sm text-destructive" role="alert">
           {error}
