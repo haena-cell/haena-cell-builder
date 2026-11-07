@@ -10,7 +10,7 @@
 5. 크롬 오른쪽 위 퍼즐 모양 아이콘 → Pacemate 옆 **고정(핀)** 을 누르면 아이콘이 항상 보여요.
 
 ## 쓰는 법
-1. 크롬에서 Pacemate(https://haena-cell-builder.vercel.app)에 로그인해 둬요.
+1. 크롬에서 Pacemate(https://pacemate-jobs.vercel.app)에 로그인해 둬요.
 2. 채용 공고 화면(사람인·잡코리아·인스타그램 등)을 열고 Pacemate 아이콘을 눌러요.
 3. 작은 창에 링크·기업명·직무·마감일이 채워져요. 근무지·제출 서류·전형 절차는 [더보기]에서 확인해요.
 4. 노란 칸을 확인하고 [저장]을 누르면 내 Pacemate에 저장돼요.

@@ -3,7 +3,8 @@
 // 로그인은 같은 크롬의 Pacemate 로그인을 그대로 쓴다. 비밀번호·키를 여기에 저장하지 않는다.
 
 // 결과를 넘길 Pacemate 주소. 개발할 때는 "http://localhost:3000" 으로 바꾼다
-const APP = "https://haena-cell-builder.vercel.app";
+const APP = "https://pacemate-jobs.vercel.app";
+const OLD_APP = "https://haena-cell-builder.vercel.app"; // 전에 쓰던 주소 (D-49)
 const MAX_TEXT = 20000;
 const STAGES = [
   "회사명, 직무, 마감일을 읽고 있어요",
@@ -414,7 +415,7 @@ async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url || !/^https?:\/\//.test(tab.url)) return showNotice("채용 공고 화면에서 아이콘을 눌러 주세요.");
   currentUrl = tab.url;
-  if (tab.url.startsWith(APP)) return showNotice("채용 공고 화면에서 아이콘을 눌러 주세요. 이 화면은 Pacemate예요.");
+  if (tab.url.startsWith(APP) || tab.url.startsWith(OLD_APP)) return showNotice("채용 공고 화면에서 아이콘을 눌러 주세요. 이 화면은 Pacemate예요.");
 
   // 팝업은 다른 곳을 누르면 닫힌다 → 정리 결과와 고친 내용은 다시 열었을 때 이어서 (AI 를 또 부르지 않는다)
   const saved = await chrome.storage.session.get(draftKey(tab.url));
