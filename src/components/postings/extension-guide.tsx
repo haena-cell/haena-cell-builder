@@ -21,8 +21,8 @@ const SHOTS = {
   address: { src: "/extension-guide/address.png", width: W, height: H, alt: "크롬 주소창에 chrome://extensions 를 입력한 화면", need: "크롬 주소창에 chrome://extensions 를 입력한 화면" },
   devMode: { src: "/extension-guide/dev-mode.png", width: W, height: H, alt: "확장 프로그램 화면 오른쪽 위 개발자 모드 스위치", need: "확장 프로그램 화면에서 오른쪽 위 [개발자 모드]를 켠 모습" },
   load: { src: "/extension-guide/load.png", width: W, height: H, alt: "폴더 선택 창에서 hurdle-extension 폴더를 고른 모습", need: "[압축해제된 확장 프로그램을 로드합니다]를 누르고 hurdle-extension 폴더를 고른 창" },
-  pin: { src: "/extension-guide/pin.png", width: W, height: H, alt: "설치된 Hurdle 과 툴바의 검정 H 아이콘", need: "설치를 마치고 툴바에 Hurdle 아이콘이 보이는 모습" },
-  popup: { src: "/extension-guide/popup.png", width: W, height: H, alt: "공고 화면에서 Hurdle 아이콘을 눌러 정리 결과가 뜬 작은 창", need: "채용 공고 화면에서 H 아이콘을 눌러 정리 결과가 뜬 작은 창" },
+  pin: { src: "/extension-guide/pin.png", width: W, height: H, alt: "설치된 Hurdle 과 툴바의 Hurdle 아이콘", need: "설치를 마치고 툴바에 Hurdle 아이콘이 보이는 모습" },
+  popup: { src: "/extension-guide/popup.png", width: W, height: H, alt: "공고 화면에서 Hurdle 아이콘을 눌러 정리 결과가 뜬 작은 창", need: "채용 공고 화면에서 Hurdle 아이콘을 눌러 정리 결과가 뜬 작은 창" },
   saved: { src: "/extension-guide/saved.png", width: W, height: H, alt: "저장을 마친 작은 창", need: "[저장]을 누른 뒤 저장됐다고 나온 작은 창" },
 } satisfies Record<string, Shot>;
 
@@ -129,14 +129,14 @@ export function ExtensionGuide() {
           </Step>
           <Step n={3} shot={SHOTS.devMode}><p>오른쪽 위 <b>개발자 모드</b>를 켜요.</p></Step>
           <Step n={4} shot={SHOTS.load}><p><b>압축해제된 확장 프로그램을 로드합니다</b>를 누르고 <b>hurdle-extension</b> 폴더를 골라요.</p></Step>
-          <Step n={5} shot={SHOTS.pin}><p>툴바에 검정 <b>H</b> 아이콘이 보이면 끝이에요. 안 보이면 퍼즐 아이콘을 누르고 Hurdle 옆 핀을 눌러 고정해요.</p></Step>
+          <Step n={5} shot={SHOTS.pin}><p>툴바에 주황 <b>h</b> 아이콘이 보이면 끝이에요. 안 보이면 퍼즐 아이콘을 누르고 Hurdle 옆 핀을 눌러 고정해요.</p></Step>
         </ol>
       </Panel>
 
       <Panel title="쓰는 법">
         <ol className="flex flex-col gap-8">
           <Step n={1}><p>같은 크롬에서 Hurdle에 로그인해 둬요.</p></Step>
-          <Step n={2} shot={SHOTS.popup}><p>채용 공고 화면에서 검정 H 아이콘을 누르고, 작은 창에서 노란 칸을 확인해요. 근무지, 제출 서류, 전형 절차는 [더보기]에 있어요.</p></Step>
+          <Step n={2} shot={SHOTS.popup}><p>채용 공고 화면에서 주황 h 아이콘을 누르고, 작은 창에서 노란 칸을 확인해요. 근무지, 제출 서류, 전형 절차는 [더보기]에 있어요.</p></Step>
           <Step n={3} shot={SHOTS.saved}><p>[저장]을 누르면 끝이에요.</p></Step>
         </ol>
       </Panel>

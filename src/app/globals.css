@@ -61,6 +61,8 @@
   --radius-4xl: 16px;
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-primary-strong: var(--primary-strong);
+  --font-logo: var(--font-outfit);
   --color-border-subtle: var(--border-subtle);
   --shadow-xs: var(--elevation-xs);
   /* 마스코트가 처음 나타날 때 한 번 폴짝 (D-54) */
@@ -73,17 +75,18 @@
 }
 
 :root {
-  /* 디자인 v3: 원티드 디자인 시스템(Montage) 규칙, 대표 색 파랑 (DESIGN.md v3, D-55) */
+  /* 디자인 v3: 원티드 디자인 시스템(Montage) 규칙, 대표 색 주황 (DESIGN.md v3, D-55 · D-56) */
   --background: #F7F7F8;
   --foreground: #171719;
   --card: #FFFFFF;
   --card-foreground: #171719;
   --popover: #FFFFFF;
   --popover-foreground: #171719;
-  --primary: #0066FF;
-  --primary-hover: #005EEB;
+  --primary: #FF7A00;
+  --primary-hover: #EB6E00;
+  --primary-strong: #E06A00;
   --primary-foreground: #FFFFFF;
-  --primary-soft: #EAF2FE;
+  --primary-soft: #FFF2E6;
   --secondary: #F4F4F5;
   --secondary-foreground: #171719;
   --muted: #F4F4F5;
@@ -93,18 +96,18 @@
   --destructive: #FF4242;
   --destructive-foreground: #FFFFFF;
   --destructive-soft: rgba(255, 66, 66, 0.08);
-  --warning: rgba(255, 146, 0, 0.1);
-  --warning-foreground: #D97A00;
+  --warning: #FFF6D9;
+  --warning-foreground: #8F6400;
   --info: #EAF2FE;
   --info-foreground: #0066FF;
   --success: rgba(0, 191, 64, 0.08);
   --success-foreground: #00A13A;
-  --due: rgba(255, 146, 0, 0.1);
-  --due-foreground: #D97A00;
+  --due: #FFF6D9;
+  --due-foreground: #8F6400;
   --border: rgba(112, 115, 124, 0.16);
   --border-subtle: rgba(112, 115, 124, 0.08);
   --input: rgba(112, 115, 124, 0.22);
-  --ring: #0066FF;
+  --ring: #FF7A00;
   --elevation: 0 4px 6px -2px rgba(23, 23, 23, 0.07), 0 10px 15px -3px rgba(23, 23, 23, 0.07);
   --elevation-xs: 0 1px 2px -1px rgba(23, 23, 23, 0.1);
   --chart-1: oklch(0.87 0 0);
@@ -115,12 +118,12 @@
   --radius: 0.75rem;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #171719;
-  --sidebar-primary: #0066FF;
+  --sidebar-primary: #FF7A00;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #F4F4F5;
-  --sidebar-accent-foreground: #0066FF;
+  --sidebar-accent-foreground: #E06A00;
   --sidebar-border: rgba(112, 115, 124, 0.08);
-  --sidebar-ring: #0066FF;
+  --sidebar-ring: #FF7A00;
 }
 
 .dark {

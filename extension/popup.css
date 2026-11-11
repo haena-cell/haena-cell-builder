@@ -9,10 +9,7 @@ body {
   font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 15px; }
-.mark {
-  display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 22%;
-  background: #000; color: #fff; font-weight: 700; font-size: 14px; line-height: 1;
-}
+.mark { display: block; width: 24px; height: 24px; border-radius: 22%; }
 .beta { padding: 1px 7px; border-radius: 999px; background: var(--info); color: var(--info-fg); font-size: 11px; font-weight: 500; }
 section, form { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: var(--card); }
 p { margin: 0; }

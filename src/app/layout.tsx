@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -7,6 +8,14 @@ const pretendard = localFont({
   src: "../../node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2",
   variable: "--font-sans",
   weight: "45 920",
+  display: "swap",
+});
+
+// 로고 글자 "hurdle" 전용 (D-56)
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: "700",
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -20,7 +29,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
+    <html lang="ko" className={`${pretendard.variable} ${outfit.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster theme="light" mobileOffset={{ bottom: 88 }} />

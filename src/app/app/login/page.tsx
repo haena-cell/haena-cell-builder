@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mascot } from "@/components/mascot";
+import { Wordmark } from "@/components/brand";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,7 +31,7 @@ export default function LoginPage({ searchParams }: PageProps<"/app/login">) {
         </Suspense>
         <div className="flex flex-col items-center gap-3">
           <Mascot pose="sit" size={120} hop className="-mt-2" />
-          <h1 className="text-2xl font-bold tracking-tight">Hurdle</h1>
+          <h1 className="text-[32px] leading-none text-foreground" aria-label="Hurdle"><Wordmark /></h1>
           <p className="text-sm text-muted-foreground">채용공고 링크만 붙여넣으면 마감일과 전형 단계를 정리해 드려요.</p>
         </div>
         <Suspense fallback={<Button size="lg" className="h-12 w-full text-base" disabled>Google로 계속하기</Button>}>

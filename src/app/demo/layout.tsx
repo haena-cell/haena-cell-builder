@@ -61,7 +61,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
             </div>
           </header>
           <div className="mx-auto w-full max-w-[1160px] px-3 pt-2 lg:px-4 lg:pt-6">
-            <p className="flex items-start gap-2 rounded-2xl bg-info px-4 py-2.5 text-sm text-info-foreground" role="status">
+            <p className="flex items-start gap-2 rounded-2xl bg-primary-soft px-4 py-2.5 text-sm text-primary-strong" role="status">
               <Eye className="mt-0.5 size-4 shrink-0" />
               둘러보기 중이에요. 모두 가상의 회사와 공고이고, 바꾼 내용은 저장되지 않아요.
             </p>

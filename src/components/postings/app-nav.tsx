@@ -36,7 +36,7 @@ export function SideNav() {
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex h-11 items-center gap-2.5 rounded-lg px-3 text-[15px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground [&_svg]:text-muted-foreground",
-              active && "bg-muted font-semibold text-primary hover:text-primary [&_svg]:text-primary",
+              active && "bg-muted font-semibold text-primary-strong hover:text-primary-strong [&_svg]:text-primary-strong",
             )}
           >
             <Icon className="size-[18px]" />
@@ -69,7 +69,7 @@ export function MobileNav() {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] text-muted-foreground transition-colors min-[400px]:w-16",
-                active && "bg-muted font-semibold text-primary",
+                active && "bg-muted font-semibold text-primary-strong",
               )}
             >
               <Icon className="size-[18px]" />

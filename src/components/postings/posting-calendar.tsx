@@ -137,7 +137,7 @@ export function PostingCalendar({ postings, today }: { postings: Posting[]; toda
                   className={cn(
                     "flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-medium tabular-nums",
                     i % 7 === 0 && !isSelected && !isToday && "text-destructive",
-                    isToday && !isSelected && "font-bold text-primary ring-[1.5px] ring-primary ring-inset",
+                    isToday && !isSelected && "font-bold text-primary-strong ring-[1.5px] ring-primary ring-inset",
                     isSelected && "bg-primary font-bold text-primary-foreground",
                   )}
                 >

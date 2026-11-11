@@ -186,7 +186,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
           <p className="truncate text-sm text-muted-foreground">{jobTitle || "직무 없음"}</p>
         </div>
         {draft.hint && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-info px-4 py-3 text-sm text-info-foreground" role="status">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-primary-soft px-4 py-3 text-sm text-primary-strong" role="status">
             <p className="min-w-0 flex-1">{draft.hint}</p>
             <Button variant="outline" size="sm" asChild>
               <Link href="/app/new">캡처 올리기</Link>

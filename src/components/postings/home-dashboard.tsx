@@ -233,7 +233,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                   <span
                     className={cn(
                       "flex size-8 items-center justify-center rounded-full transition-colors group-hover:bg-muted",
-                      isToday && !isSelected && "font-bold text-primary ring-[1.5px] ring-primary ring-inset",
+                      isToday && !isSelected && "font-bold text-primary-strong ring-[1.5px] ring-primary ring-inset",
                       isSelected && "bg-primary font-bold text-primary-foreground group-hover:bg-primary",
                     )}
                   >
