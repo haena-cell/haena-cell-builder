@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "ext:zip": "rm -f public/pacemate-extension.zip && cd extension && zip -rq ../public/pacemate-extension.zip . -x '.*'",
+    "ext:zip": "rm -f public/hurdle-extension.zip && cd extension && zip -rq ../public/hurdle-extension.zip . -x '.*'",
     "score:keywords": "node tests/score-keywords.ts -v",
     "dev": "next dev",
     "build": "next build",

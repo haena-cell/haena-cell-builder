@@ -73,7 +73,7 @@ export default function PrivacyPage() {
   return (
     <div className="flex flex-1 flex-col bg-background">
       <header className="mx-auto flex w-full max-w-3xl items-center px-5 py-5">
-        <Link href="/" aria-label="Pacemate 처음 화면">
+        <Link href="/" aria-label="Hurdle 처음 화면">
           <BrandName />
         </Link>
       </header>
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-bold tracking-tight">개인정보처리방침</h1>
             <p className="text-base leading-relaxed text-muted-foreground">
-              Pacemate(이하 &ldquo;서비스&rdquo;)는 채용 공고와 지원 현황을 정리하는 데 꼭 필요한 정보만 받고, 그 목적에만
+              Hurdle(이하 &ldquo;서비스&rdquo;)는 채용 공고와 지원 현황을 정리하는 데 꼭 필요한 정보만 받고, 그 목적에만
               써요. 무엇을 받고 어디에 맡기는지, 언제 지우는지 아래에 적었어요.
             </p>
             <p className="text-sm text-muted-foreground">시행일: {EFFECTIVE_DATE}</p>

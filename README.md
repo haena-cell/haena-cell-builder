@@ -5,7 +5,7 @@ AI 프로덕트 빌더 클럽 3기 실습으로 만들었어요.
 
 ## 주소
 
-- 사이트: https://pacemate-jobs.vercel.app
+- 사이트: https://hurdle-jobs.vercel.app (Hurdle, 예전 주소 pacemate-jobs.vercel.app 도 그대로 열려요)
 - GitHub 저장소: https://github.com/haena-cell/haena-cell-builder
 - Supabase 대시보드: https://supabase.com/dashboard/project/bihquhcrlnjivukceqae
 

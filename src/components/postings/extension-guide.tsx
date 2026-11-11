@@ -44,7 +44,7 @@ export function ExtensionGuide() {
       <Panel title="이런 일을 해요">
         <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">
           <li>채용 공고를 보던 화면에서 아이콘만 누르면 회사명, 직무, 마감일을 정리해 줘요.</li>
-          <li>작은 창에서 확인하고 저장하면 내 Pacemate에 바로 들어가요. 다른 화면으로 옮겨 다니지 않아도 돼요.</li>
+          <li>작은 창에서 확인하고 저장하면 내 Hurdle에 바로 들어가요. 다른 화면으로 옮겨 다니지 않아도 돼요.</li>
           <li>이미 저장한 공고면 알려 주고, 저장된 내용을 고칠 수 있어요.</li>
         </ul>
       </Panel>
@@ -55,9 +55,9 @@ export function ExtensionGuide() {
         </p>
         <ol className="flex flex-col gap-4">
           <Step n={1}>
-            <p>파일을 받아 더블클릭해 압축을 풀어요. <b>pacemate-extension</b> 폴더가 생겨요. 설치한 뒤에도 이 폴더는 지우지 말고 둬요.</p>
+            <p>파일을 받아 더블클릭해 압축을 풀어요. <b>hurdle-extension</b> 폴더가 생겨요. 설치한 뒤에도 이 폴더는 지우지 말고 둬요.</p>
             <Button size="sm" asChild>
-              <a href="/pacemate-extension.zip" download>
+              <a href="/hurdle-extension.zip" download>
                 <Download data-icon="inline-start" />
                 파일 받기
               </a>
@@ -71,14 +71,14 @@ export function ExtensionGuide() {
             </Button>
           </Step>
           <Step n={3}><p>오른쪽 위 <b>개발자 모드</b>를 켜요.</p></Step>
-          <Step n={4}><p><b>압축해제된 확장 프로그램을 로드합니다</b>를 누르고 <b>pacemate-extension</b> 폴더를 골라요. 폴더 안으로 들어가지 말고 폴더를 선택해요.</p></Step>
-          <Step n={5}><p>크롬 오른쪽 위 퍼즐 아이콘을 누르고, Pacemate 옆 핀을 눌러 아이콘을 고정해요.</p></Step>
+          <Step n={4}><p><b>압축해제된 확장 프로그램을 로드합니다</b>를 누르고 <b>hurdle-extension</b> 폴더를 골라요. 폴더 안으로 들어가지 말고 폴더를 선택해요.</p></Step>
+          <Step n={5}><p>크롬 오른쪽 위 퍼즐 아이콘을 누르고, Hurdle 옆 핀을 눌러 아이콘을 고정해요.</p></Step>
         </ol>
       </Panel>
 
       <Panel title="쓰는 법">
         <ol className="flex flex-col gap-4">
-          <Step n={1}><p>같은 크롬에서 Pacemate에 로그인해 둬요.</p></Step>
+          <Step n={1}><p>같은 크롬에서 Hurdle에 로그인해 둬요.</p></Step>
           <Step n={2}><p>채용 공고 화면에서 검정 P 아이콘을 눌러요.</p></Step>
           <Step n={3}><p>작은 창에서 노란 칸을 확인해요. 근무지, 제출 서류, 전형 절차는 [더보기]에 있어요.</p></Step>
           <Step n={4}><p>[저장]을 누르면 끝이에요.</p></Step>
@@ -88,16 +88,16 @@ export function ExtensionGuide() {
       <Panel title="읽는 것과 보내는 곳">
         <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">
           <li>아이콘을 <b>누른 탭 하나만</b> 읽어요. 다른 탭이나 방문 기록은 읽지 않아요.</li>
-          <li>그 화면의 글을 Pacemate 서버로 보내요. 글이 거의 없는 이미지 공고면 보이는 화면을 한 장 캡처해서 보내요.</li>
+          <li>그 화면의 글을 Hurdle 서버로 보내요. 글이 거의 없는 이미지 공고면 보이는 화면을 한 장 캡처해서 보내요.</li>
           <li>서버는 빈 칸을 채우려고 글이나 캡처를 AI(Anthropic)에 보내요. 글 속 전화번호와 이메일은 지우고 보내지만, 캡처 이미지 안의 글자는 그대로 보내요.</li>
           <li>화면 글과 캡처는 정리에만 쓰고 원문으로 저장하지 않아요. 링크와 확인한 내용만 저장해요.</li>
-          <li>비밀번호나 키를 저장하지 않아요. 같은 크롬의 Pacemate 로그인을 그대로 써요.</li>
+          <li>비밀번호나 키를 저장하지 않아요. 같은 크롬의 Hurdle 로그인을 그대로 써요.</li>
         </ul>
       </Panel>
 
       <Panel title="새 버전이 나오면">
         <p className="text-sm leading-relaxed">
-          파일을 다시 받아 같은 폴더에 덮어쓴 뒤, <code className="rounded-md bg-muted px-1.5 py-0.5 text-xs">{EXTENSIONS_URL}</code> 에서 Pacemate의 새로고침(↻)을 눌러요.
+          파일을 다시 받아 같은 폴더에 덮어쓴 뒤, <code className="rounded-md bg-muted px-1.5 py-0.5 text-xs">{EXTENSIONS_URL}</code> 에서 Hurdle의 새로고침(↻)을 눌러요.
         </p>
       </Panel>
     </div>

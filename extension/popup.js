@@ -1,10 +1,10 @@
-// Pacemate 크롬 확장 팝업 (D-47)
+// Hurdle 크롬 확장 팝업 (D-47)
 // 아이콘을 누른 탭 하나만 읽어(activeTab) 서버에서 정리하고, 사용자가 확인한 뒤 저장한다.
-// 로그인은 같은 크롬의 Pacemate 로그인을 그대로 쓴다. 비밀번호·키를 여기에 저장하지 않는다.
+// 로그인은 같은 크롬의 Hurdle 로그인을 그대로 쓴다. 비밀번호·키를 여기에 저장하지 않는다.
 
-// 결과를 넘길 Pacemate 주소. 개발할 때는 "http://localhost:3000" 으로 바꾼다
-const APP = "https://pacemate-jobs.vercel.app";
-const OLD_APP = "https://haena-cell-builder.vercel.app"; // 전에 쓰던 주소 (D-49)
+// 결과를 넘길 Hurdle 주소. 개발할 때는 "http://localhost:3000" 으로 바꾼다
+const APP = "https://hurdle-jobs.vercel.app";
+const OLD_APPS = ["https://pacemate-jobs.vercel.app", "https://haena-cell-builder.vercel.app"]; // 전에 쓰던 주소 (D-49, D-53)
 const MAX_TEXT = 20000;
 const STAGES = [
   "회사명, 직무, 마감일을 읽고 있어요",
@@ -62,7 +62,7 @@ function showNotice(text, actionLabel, action, secondLabel, secondAction, done =
 }
 
 const openApp = (path) => chrome.tabs.create({ url: `${APP}${path}` });
-const showLogin = () => showNotice("Pacemate에 로그인하면 공고를 바로 저장할 수 있어요. 로그인한 뒤 공고 화면에서 아이콘을 다시 눌러 주세요.", "로그인하러 가기", () => openApp("/app/login"));
+const showLogin = () => showNotice("Hurdle에 로그인하면 공고를 바로 저장할 수 있어요. 로그인한 뒤 공고 화면에서 아이콘을 다시 눌러 주세요.", "로그인하러 가기", () => openApp("/app/login"));
 // 같은 링크로 저장한 공고가 있으면 알리고, 고칠지 묻는다 (D-48)
 function showExisting(existing) {
   const name = existing.company ? ` (${existing.company}${existing.jobTitle ? ` · ${existing.jobTitle}` : ""})` : "";
@@ -132,7 +132,7 @@ async function start(tab) {
     fillForm(formFromPosting(data.posting));
     keepDraft();
   } catch {
-    showNotice("Pacemate에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.", "다시 시도", () => start(tab));
+    showNotice("Hurdle에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.", "다시 시도", () => start(tab));
   }
 }
 
@@ -371,7 +371,7 @@ async function save(event) {
       await chrome.storage.session.remove(draftKey(state.url));
       const saved = f.company.trim();
       state = null;
-      return showNotice(`${saved} 공고를 ${editId ? "수정" : "저장"}했어요.`, "Pacemate에서 보기", () => openApp(`/app/postings/${editId ?? result.id}`), undefined, undefined, true);
+      return showNotice(`${saved} 공고를 ${editId ? "수정" : "저장"}했어요.`, "Hurdle에서 보기", () => openApp(`/app/postings/${editId ?? result.id}`), undefined, undefined, true);
     }
     if (result.existingId) {
       await chrome.storage.session.remove(draftKey(state.url));
@@ -417,7 +417,7 @@ async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url || !/^https?:\/\//.test(tab.url)) return showNotice("채용 공고 화면에서 아이콘을 눌러 주세요.");
   currentUrl = tab.url;
-  if (tab.url.startsWith(APP) || tab.url.startsWith(OLD_APP)) return showNotice("채용 공고 화면에서 아이콘을 눌러 주세요. 이 화면은 Pacemate예요.");
+  if ([APP, ...OLD_APPS].some((a) => tab.url.startsWith(a))) return showNotice("채용 공고 화면에서 아이콘을 눌러 주세요. 이 화면은 Hurdle이에요.");
 
   // 팝업은 다른 곳을 누르면 닫힌다 → 정리 결과와 고친 내용은 다시 열었을 때 이어서 (AI 를 또 부르지 않는다)
   const saved = await chrome.storage.session.get(draftKey(tab.url));

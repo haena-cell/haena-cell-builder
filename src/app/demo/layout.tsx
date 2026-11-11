@@ -10,7 +10,7 @@ import { MobileNav, SideNav } from "@/components/postings/app-nav";
 import { DemoProvider } from "@/components/postings/demo-context";
 
 export const metadata: Metadata = {
-  title: { default: "둘러보기", template: "%s (둘러보기) · Pacemate" },
+  title: { default: "둘러보기", template: "%s (둘러보기) · Hurdle" },
 };
 
 // 로그인 없이 둘러보기 (D-34): 앱과 같은 틀. 공고 넣기·시작하기는 로그인 화면으로 간다

@@ -146,7 +146,7 @@ export default function Home() {
       {/* 푸터 */}
       <footer className="mx-auto w-full max-w-6xl px-5 py-8">
         <div className="flex items-center justify-between gap-4 text-sm">
-          <span className="font-semibold">Pacemate © 2026</span>
+          <span className="font-semibold">Hurdle © 2026</span>
           <Link href="/privacy" className="text-muted-foreground underline-offset-4 hover:underline">개인정보처리방침</Link>
         </div>
       </footer>
