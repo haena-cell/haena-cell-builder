@@ -264,6 +264,7 @@ export type Database = {
     }
     Functions: {
       create_sample_postings: { Args: never; Returns: number }
+      delete_my_account: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

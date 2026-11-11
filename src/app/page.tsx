@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Reveal } from "@/components/reveal";
 import { BrandName } from "@/components/brand";
 import { DemoButton, StartButton } from "@/components/start-button";
@@ -144,7 +145,10 @@ export default function Home() {
 
       {/* 푸터 */}
       <footer className="mx-auto w-full max-w-6xl px-5 py-8">
-        <span className="text-sm font-semibold">Pacemate © 2026</span>
+        <div className="flex items-center justify-between gap-4 text-sm">
+          <span className="font-semibold">Pacemate © 2026</span>
+          <Link href="/privacy" className="text-muted-foreground underline-offset-4 hover:underline">개인정보처리방침</Link>
+        </div>
       </footer>
     </div>
   );
