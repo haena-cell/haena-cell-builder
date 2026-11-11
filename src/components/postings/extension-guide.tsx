@@ -1,12 +1,30 @@
 "use client";
 
-import { Copy, Download } from "lucide-react";
+import { useState } from "react";
+import Image from "next/image";
+import { Copy, Download, ImageIcon, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
-// 메뉴의 [확장 프로그램] 안내 (D-48)
+// 메뉴의 [확장 프로그램] 안내 (D-48). 단계마다 실제 화면 캡처 (D-52)
 const EXTENSIONS_URL = "chrome://extensions";
+
+// 캡처 목록 — 파일은 public/extension-guide/ (모두 1200×900, 같은 비율). src 가 비면 무엇을 찍을지 적힌 빈 자리가 보인다
+// 개인 이름·다른 확장 프로그램·폴더 이름은 가렸고, 공고 내용은 흐리게 하거나 둘러보기용 가짜 공고(노을커머스)로 바꿨다 (2026-11-12)
+type Shot = { src: string | null; width?: number; height?: number; alt: string; need: string };
+const W = 1200;
+const H = 900;
+const SHOTS = {
+  unzip: { src: "/extension-guide/unzip.png", width: W, height: H, alt: "받은 파일을 풀어 생긴 hurdle-extension 폴더", need: "받은 파일을 더블클릭해 hurdle-extension 폴더가 생긴 Finder(파일) 화면" },
+  address: { src: "/extension-guide/address.png", width: W, height: H, alt: "크롬 주소창에 chrome://extensions 를 입력한 화면", need: "크롬 주소창에 chrome://extensions 를 입력한 화면" },
+  devMode: { src: "/extension-guide/dev-mode.png", width: W, height: H, alt: "확장 프로그램 화면 오른쪽 위 개발자 모드 스위치", need: "확장 프로그램 화면에서 오른쪽 위 [개발자 모드]를 켠 모습" },
+  load: { src: "/extension-guide/load.png", width: W, height: H, alt: "폴더 선택 창에서 hurdle-extension 폴더를 고른 모습", need: "[압축해제된 확장 프로그램을 로드합니다]를 누르고 hurdle-extension 폴더를 고른 창" },
+  pin: { src: "/extension-guide/pin.png", width: W, height: H, alt: "설치된 Hurdle 과 툴바의 검정 H 아이콘", need: "설치를 마치고 툴바에 Hurdle 아이콘이 보이는 모습" },
+  popup: { src: "/extension-guide/popup.png", width: W, height: H, alt: "공고 화면에서 Hurdle 아이콘을 눌러 정리 결과가 뜬 작은 창", need: "채용 공고 화면에서 H 아이콘을 눌러 정리 결과가 뜬 작은 창" },
+  saved: { src: "/extension-guide/saved.png", width: W, height: H, alt: "저장을 마친 작은 창", need: "[저장]을 누른 뒤 저장됐다고 나온 작은 창" },
+} satisfies Record<string, Shot>;
 
 function Panel({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -20,12 +38,51 @@ function Panel({ title, aside, children }: { title: string; aside?: React.ReactN
   );
 }
 
-function Step({ n, children }: { n: number; children: React.ReactNode }) {
+function Step({ n, shot, children }: { n: number; shot?: Shot; children: React.ReactNode }) {
   return (
-    <li className="flex gap-3">
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{n}</span>
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pt-0.5 text-sm leading-relaxed">{children}</div>
+    <li className="flex flex-col gap-3">
+      <div className="flex gap-3">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{n}</span>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pt-0.5 text-sm leading-relaxed">{children}</div>
+      </div>
+      {shot && <ShotFrame shot={shot} />}
     </li>
+  );
+}
+
+// 캡처 한 장. 누르면 크게 본다. 아직 없으면 무엇을 찍을지 적힌 빈 자리
+function ShotFrame({ shot }: { shot: Shot }) {
+  const [open, setOpen] = useState(false);
+  if (!shot.src) {
+    return (
+      <div className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted px-6 text-center text-muted-foreground">
+        <ImageIcon className="size-6" aria-hidden />
+        <p className="text-xs font-semibold">캡처 준비 중</p>
+        <p className="text-xs leading-relaxed">{shot.need}</p>
+      </div>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group relative block w-full overflow-hidden rounded-2xl border border-border bg-muted"
+        aria-label={`${shot.alt} 크게 보기`}
+      >
+        <Image src={shot.src} alt={shot.alt} width={shot.width ?? 1600} height={shot.height ?? 1000} className="h-auto w-full" sizes="(min-width: 768px) 640px, 100vw" />
+        <span className="absolute right-2 bottom-2 flex size-8 items-center justify-center rounded-full bg-card/90 text-foreground shadow-sm">
+          <Maximize2 className="size-4" aria-hidden />
+        </span>
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[min(64rem,calc(100%-2rem))] p-2 sm:max-w-[min(64rem,calc(100%-2rem))]">
+          <DialogTitle className="sr-only">{shot.alt}</DialogTitle>
+          <DialogDescription className="sr-only">크게 본 화면 캡처</DialogDescription>
+          <Image src={shot.src} alt={shot.alt} width={shot.width ?? 1600} height={shot.height ?? 1000} className="h-auto max-h-[85vh] w-full rounded-xl object-contain" sizes="100vw" />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -53,9 +110,9 @@ export function ExtensionGuide() {
         <p className="rounded-2xl bg-muted px-4 py-3 text-sm leading-relaxed">
           컴퓨터의 크롬에서만 쓸 수 있고, 휴대폰에서는 쓸 수 없어요. 아직 크롬 웹 스토어에 올리기 전이라 파일을 받아 직접 설치해요.
         </p>
-        <ol className="flex flex-col gap-4">
-          <Step n={1}>
-            <p>파일을 받아 더블클릭해 압축을 풀어요. <b>hurdle-extension</b> 폴더가 생겨요. 설치한 뒤에도 이 폴더는 지우지 말고 둬요.</p>
+        <ol className="flex flex-col gap-8">
+          <Step n={1} shot={SHOTS.unzip}>
+            <p>파일을 받아 더블클릭해요. <b>hurdle-extension</b> 폴더가 생기면 지우지 말고 둬요.</p>
             <Button size="sm" asChild>
               <a href="/hurdle-extension.zip" download>
                 <Download data-icon="inline-start" />
@@ -63,25 +120,24 @@ export function ExtensionGuide() {
               </a>
             </Button>
           </Step>
-          <Step n={2}>
-            <p>크롬 주소창에 <code className="rounded-md bg-muted px-1.5 py-0.5 text-xs">{EXTENSIONS_URL}</code> 를 붙여넣고 Enter를 눌러요. 보안 때문에 링크로 바로 열 수 없어요.</p>
+          <Step n={2} shot={SHOTS.address}>
+            <p>크롬 주소창에 <code className="rounded-md bg-muted px-1.5 py-0.5 text-xs">{EXTENSIONS_URL}</code> 를 붙여넣고 Enter를 눌러요.</p>
             <Button variant="outline" size="sm" onClick={copyAddress}>
               <Copy data-icon="inline-start" />
               주소 복사
             </Button>
           </Step>
-          <Step n={3}><p>오른쪽 위 <b>개발자 모드</b>를 켜요.</p></Step>
-          <Step n={4}><p><b>압축해제된 확장 프로그램을 로드합니다</b>를 누르고 <b>hurdle-extension</b> 폴더를 골라요. 폴더 안으로 들어가지 말고 폴더를 선택해요.</p></Step>
-          <Step n={5}><p>크롬 오른쪽 위 퍼즐 아이콘을 누르고, Hurdle 옆 핀을 눌러 아이콘을 고정해요.</p></Step>
+          <Step n={3} shot={SHOTS.devMode}><p>오른쪽 위 <b>개발자 모드</b>를 켜요.</p></Step>
+          <Step n={4} shot={SHOTS.load}><p><b>압축해제된 확장 프로그램을 로드합니다</b>를 누르고 <b>hurdle-extension</b> 폴더를 골라요.</p></Step>
+          <Step n={5} shot={SHOTS.pin}><p>툴바에 검정 <b>H</b> 아이콘이 보이면 끝이에요. 안 보이면 퍼즐 아이콘을 누르고 Hurdle 옆 핀을 눌러 고정해요.</p></Step>
         </ol>
       </Panel>
 
       <Panel title="쓰는 법">
-        <ol className="flex flex-col gap-4">
+        <ol className="flex flex-col gap-8">
           <Step n={1}><p>같은 크롬에서 Hurdle에 로그인해 둬요.</p></Step>
-          <Step n={2}><p>채용 공고 화면에서 검정 P 아이콘을 눌러요.</p></Step>
-          <Step n={3}><p>작은 창에서 노란 칸을 확인해요. 근무지, 제출 서류, 전형 절차는 [더보기]에 있어요.</p></Step>
-          <Step n={4}><p>[저장]을 누르면 끝이에요.</p></Step>
+          <Step n={2} shot={SHOTS.popup}><p>채용 공고 화면에서 검정 H 아이콘을 누르고, 작은 창에서 노란 칸을 확인해요. 근무지, 제출 서류, 전형 절차는 [더보기]에 있어요.</p></Step>
+          <Step n={3} shot={SHOTS.saved}><p>[저장]을 누르면 끝이에요.</p></Step>
         </ol>
       </Panel>
 
