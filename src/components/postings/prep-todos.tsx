@@ -76,10 +76,20 @@ export function DueChip({ value, done, today, onClick }: { value: string; done: 
     !done && days <= 1 && "bg-destructive-soft text-destructive",
     done && "bg-secondary text-muted-foreground",
   );
-  if (!onClick) return <span className={className}>{formatDueDate(value, today)}</span>;
+  // "D-5 | 11/26 (화)" 의 가운데 막대는 흐리게(30%) · 두껍게(2px) 해서 날짜 정보와 구분한다 (2026-11-12 사용자 요청)
+  const [left, date] = formatDueDate(value, today).split(" | ");
+  const text = (
+    <span className="inline-flex items-center gap-1.5">
+      {left}
+      <span aria-hidden className="inline-block h-[0.85em] w-0.5 rounded-full bg-current opacity-30" />
+      <span className="sr-only">, </span>
+      {date}
+    </span>
+  );
+  if (!onClick) return <span className={className}>{text}</span>;
   return (
-    <button type="button" onClick={onClick} aria-label={`마감 날짜 ${formatDueDate(value, today)}, 바꾸기`} className={className}>
-      {formatDueDate(value, today)}
+    <button type="button" onClick={onClick} aria-label={`마감 날짜 ${left} ${date}, 바꾸기`} className={className}>
+      {text}
     </button>
   );
 }
