@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { BrandMark } from "@/components/brand";
+import { Mascot } from "@/components/mascot";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,7 +18,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm items-center gap-8 px-6 py-10 text-center md:px-8 md:py-12">
         <BetaBadge className="-mt-2 h-5 px-2 text-[11px]" />
         <div className="flex flex-col items-center gap-3">
-          <BrandMark className="size-14 text-3xl font-bold" />
+          <Mascot pose="sit" size={120} hop className="-mt-2" />
           <h1 className="text-2xl font-bold tracking-tight">Pacemate</h1>
           <p className="text-sm text-muted-foreground">채용공고 링크만 붙여넣으면 마감일과 전형 단계를 정리해 드려요.</p>
         </div>

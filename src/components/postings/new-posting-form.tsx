@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles, X } from "lucide-react";
 import { ExtractProgress } from "@/components/postings/extract-progress";
+import { Mascot } from "@/components/mascot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -303,9 +304,10 @@ export function NewPostingForm() {
 
       {loading && <ExtractProgress />}
       {error && (
-        <p className="rounded-2xl bg-destructive-soft px-4 py-3 text-sm text-destructive" role="alert">
-          {error}
-        </p>
+        <div className="flex items-center gap-3 rounded-2xl bg-destructive-soft px-4 py-3" role="alert">
+          <Mascot pose="understand" size={48} hop />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
       )}
       {saved && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-warning px-4 py-3" role="alert">

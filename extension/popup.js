@@ -48,8 +48,10 @@ function showLoading() {
   }, STAGE_MS);
 }
 
-function showNotice(text, actionLabel, action, secondLabel, secondAction) {
+// done: 저장을 마쳤을 때만 편지를 문 강아지를 보여 준다 (D-54)
+function showNotice(text, actionLabel, action, secondLabel, secondAction, done = false) {
   show("notice");
+  $("noticeDog").hidden = !done;
   $("noticeText").textContent = text;
   $("noticeAction").hidden = !actionLabel;
   $("noticeAction").textContent = actionLabel ?? "";
@@ -369,7 +371,7 @@ async function save(event) {
       await chrome.storage.session.remove(draftKey(state.url));
       const saved = f.company.trim();
       state = null;
-      return showNotice(`${saved} 공고를 ${editId ? "수정" : "저장"}했어요.`, "Pacemate에서 보기", () => openApp(`/app/postings/${editId ?? result.id}`));
+      return showNotice(`${saved} 공고를 ${editId ? "수정" : "저장"}했어요.`, "Pacemate에서 보기", () => openApp(`/app/postings/${editId ?? result.id}`), undefined, undefined, true);
     }
     if (result.existingId) {
       await chrome.storage.session.remove(draftKey(state.url));

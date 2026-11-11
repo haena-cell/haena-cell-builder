@@ -12,6 +12,7 @@ import { Segmented } from "@/components/postings/segmented";
 import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { currentStepIndex, kstDateKey, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
+import { Mascot } from "@/components/mascot";
 
 // [할 일] 모아보기 (D-20): 모든 공고의 준비 항목·하위 할 일을 마감 임박 공고 순 또는 할 일 마감일 순으로.
 // 추가·수정은 공고 상세에서, 여기서는 체크와 공고로 이동.
@@ -168,8 +169,9 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
 
       {empty ? (
         <Card className="items-center px-4 py-10 text-center md:px-6">
+          {total === 0 ? <Mascot pose="sit" size={96} /> : <Mascot pose="rest" size={72} hop />}
           <p className="text-sm text-muted-foreground">
-            {total === 0 ? "공고 상세의 준비 항목에서 할 일을 추가해 보세요" : "남은 할 일이 없어요"}
+            {total === 0 ? "공고 상세의 준비 항목에서 할 일을 추가해 보세요" : "할 일을 다 끝냈어요. 잠깐 쉬어 가요"}
           </p>
           <Button variant="outline" size="lg" asChild>
             <Link href={href("/app/postings")}>공고 목록으로</Link>

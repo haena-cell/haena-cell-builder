@@ -45,6 +45,8 @@ import {
   type Priority,
 } from "@/lib/postings";
 import { cn } from "@/lib/utils";
+import { stepDoneToast } from "@/components/postings/step-done-toast";
+import { Mascot } from "@/components/mascot";
 
 // 공고 목록 표 (D-26): 한 줄에 공고 하나. 상태 탭 + 우선순위·근로형태 걸러 보기, 줄에서 우선순위·근로형태 고르기
 
@@ -238,8 +240,10 @@ export function PostingList({
 
   async function handleComplete(posting: Posting, stepIndex: number) {
     if (!(await saveStep(posting, stepIndex, true))) return;
-    toast(`${posting.company} · ${posting.steps[stepIndex].name} 완료`, {
-      action: { label: "되돌리기", onClick: () => saveStep(posting, stepIndex, false) },
+    stepDoneToast({
+      label: `${posting.company} · ${posting.steps[stepIndex].name}`,
+      isLast: stepIndex === posting.steps.length - 1,
+      undo: () => saveStep(posting, stepIndex, false),
     });
   }
 
@@ -364,6 +368,7 @@ export function PostingList({
 
       {rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+          {postings.length === 0 ? <Mascot pose="sit" size={104} hop /> : <Mascot pose="understand" size={80} />}
           <p className="text-sm text-muted-foreground">
             {postings.length === 0 ? "첫 공고를 넣어 보세요" : filtering ? "조건에 맞는 공고가 없어요" : "이 상태의 공고가 없어요"}
           </p>

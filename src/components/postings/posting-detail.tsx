@@ -25,6 +25,7 @@ import {
   type Posting,
 } from "@/lib/postings";
 import { cn } from "@/lib/utils";
+import { stepDoneToast } from "@/components/postings/step-done-toast";
 
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -74,8 +75,10 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
 
   async function completeStep(stepIndex: number) {
     if (!(await saveStep(stepIndex, true))) return;
-    toast(`${posting.steps[stepIndex].name} 완료`, {
-      action: { label: "되돌리기", onClick: () => saveStep(stepIndex, false) },
+    stepDoneToast({
+      label: posting.steps[stepIndex].name,
+      isLast: stepIndex === posting.steps.length - 1,
+      undo: () => saveStep(stepIndex, false),
     });
   }
 

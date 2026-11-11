@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Mascot } from "@/components/mascot";
 
 // 공고를 읽는 동안 보여 주는 안내 (D-47). 시간에 따라 넘어가고, 마지막 줄에서 끝날 때까지 기다린다
 const STAGES = [
@@ -20,7 +21,9 @@ export function ExtractProgress() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <ul className="flex flex-col gap-2 rounded-2xl bg-muted px-4 py-3 text-sm" role="status" aria-live="polite">
+    <div className="flex flex-col items-center gap-3">
+    <Mascot pose="read" size={120} hop className="mt-2" />
+    <ul className="flex w-full flex-col gap-2 rounded-2xl bg-muted px-4 py-3 text-sm" role="status" aria-live="polite">
       {STAGES.map((label, i) => (
         <li key={label} className={cn("flex items-center gap-2.5", i > stage ? "text-muted-foreground/60" : i < stage && "text-muted-foreground", i === stage && "font-medium")}>
           {i < stage ? (
@@ -34,5 +37,6 @@ export function ExtractProgress() {
         </li>
       ))}
     </ul>
+    </div>
   );
 }

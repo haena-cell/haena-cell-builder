@@ -13,6 +13,8 @@ import { StepDots } from "@/components/postings/step-bar";
 import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { currentStepIndex, isSubmitStep, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
+import { stepDoneToast } from "@/components/postings/step-done-toast";
+import { Mascot } from "@/components/mascot";
 
 // 홈 (D-25): 마감 임박 공고 4개 · 이번 달 달력(날짜를 고르면 아래에 그날 마감 공고·할 일) · 남은 할 일 5개. 전체는 각 화면에서
 
@@ -114,8 +116,10 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
 
   async function completeStep(posting: Posting, stepIndex: number) {
     if (!(await saveStep(posting, stepIndex, true))) return;
-    toast(`${posting.company} · ${posting.steps[stepIndex].name} 완료`, {
-      action: { label: "되돌리기", onClick: () => saveStep(posting, stepIndex, false) },
+    stepDoneToast({
+      label: `${posting.company} · ${posting.steps[stepIndex].name}`,
+      isLast: stepIndex === posting.steps.length - 1,
+      undo: () => saveStep(posting, stepIndex, false),
     });
   }
 
@@ -146,7 +150,16 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
     <div className="flex flex-col gap-4">
       <Card className="gap-4 px-3 md:px-6" aria-label="마감 임박">
         <PanelHead title="마감 임박" href={href("/app/postings")} />
-        {upcoming.length === 0 ? (
+        {postings.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-4 pt-2 pb-6 text-center">
+            <Mascot pose="sit" size={104} hop />
+            <p className="mt-2 font-semibold">아직 넣은 공고가 없어요</p>
+            <p className="text-sm text-muted-foreground">첫 공고를 넣으면 마감일과 단계를 같이 챙길게요</p>
+            <Button size="lg" className="mt-2" asChild>
+              <Link href={href("/app/new")}>공고 넣기</Link>
+            </Button>
+          </div>
+        ) : upcoming.length === 0 ? (
           <p className="rounded-2xl bg-muted px-4 py-4 text-sm text-muted-foreground">마감을 앞둔 공고가 없어요</p>
         ) : (
           <ul className="grid gap-3 xl:grid-cols-2">
@@ -290,7 +303,12 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
           <PanelHead title="할 일" href={href("/app/todos")}>
             {remaining > 0 && <span className="rounded-full bg-secondary px-2 text-xs font-medium tabular-nums">{remaining}</span>}
           </PanelHead>
-          {shownTodos.length === 0 ? (
+          {shownTodos.length === 0 && allTodos.length > 0 ? (
+            <div className="flex items-center gap-3 rounded-2xl bg-muted px-4 py-3">
+              <Mascot pose="rest" size={44} />
+              <p className="text-sm text-muted-foreground">할 일을 다 끝냈어요. 잠깐 쉬어 가요</p>
+            </div>
+          ) : shownTodos.length === 0 ? (
             <p className="rounded-2xl bg-muted px-4 py-4 text-sm text-muted-foreground">남은 할 일이 없어요</p>
           ) : (
             <ul className="flex flex-col rounded-2xl bg-muted px-3 py-1.5">
