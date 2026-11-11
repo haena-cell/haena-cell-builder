@@ -142,12 +142,7 @@ export function PostingDetail({
           {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
           <DeadlineBadge posting={posting} daysLeft={daysLeftFor(posting, now)} />
           {/* 수정 · 삭제 · 저장은 제목 옆에 (2026-11-12 사용자 요청) */}
-          {editing ? (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>취소</Button>
-              <Button type="submit" form={EDIT_FORM_ID} size="sm">저장</Button>
-            </>
-          ) : confirmDelete ? (
+          {confirmDelete ? (
             <span className="flex items-center gap-1.5" role="alert">
               <span className="text-sm">정말 지울까요?</span>
               <Button variant="destructive" size="sm" onClick={remove} disabled={deleting}>{deleting ? "지우는 중…" : "지우기"}</Button>
@@ -155,10 +150,19 @@ export function PostingDetail({
             </span>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Pencil data-icon="inline-start" />
-                수정
-              </Button>
+              {editing ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>취소</Button>
+                  <Button type="submit" form={EDIT_FORM_ID} size="sm">저장</Button>
+                </>
+              ) : (
+                // 수정은 색 없이 회색 (2026-11-12 사용자 요청)
+                <Button variant="outline" size="sm" className="text-foreground/80 hover:bg-muted hover:text-foreground aria-expanded:bg-muted" onClick={() => setEditing(true)}>
+                  <Pencil data-icon="inline-start" />
+                  수정
+                </Button>
+              )}
+              {/* 삭제는 고치는 중에도 보인다 (2026-11-12 사용자 요청) */}
               <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
                 <Trash2 data-icon="inline-start" />
                 삭제
