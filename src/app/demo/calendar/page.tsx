@@ -19,7 +19,7 @@ async function Calendar() {
 export default function DemoCalendarPage() {
   return (
     <PageBody>
-      <PageTitle title="달력" description="날짜를 누르면 그날 마감인 공고가 보여요." />
+      <PageTitle title="달력" />
       <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="달력을 불러오는 중" />}>
         <Calendar />
       </Suspense>

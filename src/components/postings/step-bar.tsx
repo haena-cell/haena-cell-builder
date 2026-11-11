@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { PostingStep } from "@/lib/postings";
 
-// 전형 단계 표시바 (DESIGN v3): 얇은 막대 칸. 끝난 단계 파랑, 현재 단계 옅은 파랑, 남은 단계 회색
+// 전형 단계 표시바 (DESIGN v3): 얇은 막대 칸. 끝난 단계 주황, 지금 단계 어두운 회색, 남은 단계 옅은 회색 (2026-11-12)
 export function StepBar({ steps, current }: { steps: PostingStep[]; current: number }) {
   return (
     <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
@@ -14,7 +14,7 @@ export function StepBar({ steps, current }: { steps: PostingStep[]; current: num
               className={cn(
                 "h-1 rounded-full",
                 done && "bg-primary",
-                isCurrent && !done && "bg-primary/45",
+                isCurrent && !done && "bg-foreground/45",
                 !done && !isCurrent && "bg-accent",
               )}
             />
@@ -33,7 +33,7 @@ export function StepBar({ steps, current }: { steps: PostingStep[]; current: num
   );
 }
 
-// 목록 표의 진행 단계 (D-26 → DESIGN v3): 단계마다 얇은 막대 칸. 끝난 단계 파랑, 현재 단계 옅은 파랑, 남은 단계 회색
+// 목록 표의 진행 단계 (D-26 → DESIGN v3): 단계마다 얇은 막대 칸. 끝난 단계 주황, 지금 단계 어두운 회색, 남은 단계 옅은 회색 (2026-11-12)
 export function StepDots({ steps, current }: { steps: PostingStep[]; current: number }) {
   return (
     <ol className="flex w-28 max-w-full items-center gap-1 md:w-36" aria-label="전형 단계">
@@ -47,7 +47,7 @@ export function StepDots({ steps, current }: { steps: PostingStep[]; current: nu
               className={cn(
                 "block h-1 rounded-full",
                 done && "bg-primary",
-                isCurrent && !done && "bg-primary/45",
+                isCurrent && !done && "bg-foreground/45",
                 !done && !isCurrent && "bg-accent",
               )}
             >
@@ -59,5 +59,27 @@ export function StepDots({ steps, current }: { steps: PostingStep[]; current: nu
         );
       })}
     </ol>
+  );
+}
+
+// 지금 단계 끝내기 (2026-11-12 사용자 요청): [제출 완료]·[다음 단계로] 를 둥근 체크 하나로.
+// 평소에는 회색, 마우스를 올리거나 누르면 주황 바탕 + 흰 체크. 진행 단계 바로 옆에 둔다
+export function StepDoneButton({ stepName, onClick, className }: { stepName: string; onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${stepName} 완료`}
+      title={`${stepName} 완료`}
+      className={cn(
+        "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/25 transition-colors",
+        "hover:bg-primary hover:text-primary-foreground focus-visible:bg-primary focus-visible:text-primary-foreground focus-visible:outline-none active:bg-primary-hover",
+        className,
+      )}
+    >
+      <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5.5 12.5l4.25 4.25L18.5 8" />
+      </svg>
+    </button>
   );
 }

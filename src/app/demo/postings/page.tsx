@@ -21,7 +21,7 @@ async function Postings() {
 export default function DemoPostingsPage() {
   return (
     <PageBody>
-      <PageTitle title="내 공고" description="상태 탭과 우선순위·근로형태로 걸러 볼 수 있어요." />
+      <PageTitle title="내 공고" />
       <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="공고를 불러오는 중" />}>
         <Postings />
       </Suspense>

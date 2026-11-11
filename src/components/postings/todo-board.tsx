@@ -86,7 +86,9 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
               ...p,
               prepItems: p.prepItems.map((it) =>
                 row.kind === "item"
-                  ? it.id === row.id ? { ...it, done } : it
+                  ? it.id === row.id
+                    ? { ...it, done, subtasks: done ? it.subtasks.map((t) => ({ ...t, done: true })) : it.subtasks }
+                    : it
                   : { ...it, subtasks: it.subtasks.map((t) => (t.id === row.id ? { ...t, done } : t)) },
               ),
             },
@@ -96,8 +98,11 @@ export function TodoBoard({ initialPostings, today }: { initialPostings: Posting
 
   async function toggle(row: Row) {
     const done = !row.done;
+    // 항목을 체크하면 아래 하위 할 일도 함께 끝낸다 (2026-11-12 사용자 요청)
+    const subs = row.kind === "item" && done ? (row.posting.prepItems.find((it) => it.id === row.id)?.subtasks ?? []).filter((t) => !t.done) : [];
     patch(row, done);
     const result = row.kind === "item" ? await setPrepDone(row.id, done) : await updateSubtask(row.id, { done });
+    if (result.ok) await Promise.all(subs.map((t) => updateSubtask(t.id, { done: true })));
     if (!result.ok) {
       patch(row, !done);
       toast.error(result.message);

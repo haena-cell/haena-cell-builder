@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -9,8 +10,11 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const DAY_MS = 86_400_000;
 const toKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
+export type OtherDeadline = { id: string; company: string; date: string; href: string };
+
 // 공고 상세의 마감: 마감일이 든 한 주만 보여 주고, 전주·다음 주로 넘겨 볼 수 있다 (D-48). 날짜는 한국 날짜(YYYY-MM-DD)
-export function DeadlineWeek({ deadline, today }: { deadline: string; today: string }) {
+// 날짜 아래에 같은 날 마감인 다른 공고도 보여 준다 (2026-11-12 사용자 요청)
+export function DeadlineWeek({ deadline, today, others = [] }: { deadline: string; today: string; others?: OtherDeadline[] }) {
   const [offset, setOffset] = useState(0);
   const base = Date.parse(`${deadline}T00:00:00Z`);
   const sunday = base - new Date(base).getUTCDay() * DAY_MS + offset * 7 * DAY_MS;
@@ -41,7 +45,7 @@ export function DeadlineWeek({ deadline, today }: { deadline: string; today: str
               key={key}
               aria-current={isDeadline ? "date" : undefined}
               className={cn(
-                "flex flex-col items-center gap-0.5 rounded-lg py-2 text-sm font-medium tabular-nums",
+                "flex min-w-0 flex-col items-center gap-0.5 rounded-lg py-2 text-sm font-medium tabular-nums",
                 isToday && !isDeadline && "text-primary-strong ring-[1.5px] ring-primary ring-inset",
                 isDeadline && "bg-primary font-bold text-primary-foreground",
               )}
@@ -49,6 +53,14 @@ export function DeadlineWeek({ deadline, today }: { deadline: string; today: str
               <span className={cn("text-[11px] text-muted-foreground", isDeadline && "text-primary-foreground")}>{WEEKDAYS[i]}</span>
               {Number(key.slice(8))}
               <span className="h-3.5 text-[10px] leading-3.5 font-medium">{isDeadline ? "마감" : isToday ? "오늘" : ""}</span>
+              {others.filter((o) => o.date === key).slice(0, 2).map((o) => (
+                <Link key={o.id} href={o.href} className={cn("w-full truncate px-0.5 text-center text-[10px] leading-4 text-muted-foreground hover:text-foreground hover:underline", isDeadline && "text-primary-foreground/85 hover:text-primary-foreground")}>
+                  {o.company}
+                </Link>
+              ))}
+              {others.filter((o) => o.date === key).length > 2 && (
+                <span className="text-[10px] leading-4 text-muted-foreground">+{others.filter((o) => o.date === key).length - 2}</span>
+              )}
             </li>
           );
         })}

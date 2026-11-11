@@ -133,11 +133,18 @@ export function daysToDate(dueDate: string, today: string) {
 }
 
 // "11월 5일 (목) · D-3"
+// 할 일 마감 표시: "D-5 | 11/26 (화)", 오늘 "D-day", 지나면 "D+2" (2026-11-12 사용자 요청)
 export function formatDueDate(dueDate: string, today: string) {
-  const day = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", month: "long", day: "numeric", weekday: "short" }).format(
-    new Date(`${dueDate}T00:00:00Z`),
-  );
+  const d = new Date(`${dueDate}T00:00:00Z`);
+  const weekday = new Intl.DateTimeFormat("ko-KR", { timeZone: "UTC", weekday: "short" }).format(d);
   const days = daysToDate(dueDate, today);
-  const left = days === 0 ? "오늘" : days > 0 ? `D-${days}` : `${-days}일 지남`;
-  return `${day} · ${left}`;
+  const left = days === 0 ? "D-day" : days > 0 ? `D-${days}` : `D+${-days}`;
+  return `${left} | ${d.getUTCMonth() + 1}/${d.getUTCDate()} (${weekday})`;
+}
+
+// 다른 공고들의 마감 날짜(한국 날짜): 공고 상세의 마감 주 달력에 함께 보여 준다 (2026-11-12)
+export function otherDeadlines(postings: Posting[], exceptId: string) {
+  return postings
+    .filter((p) => p.id !== exceptId && p.deadlineKind === "date" && p.deadlineAt)
+    .map((p) => ({ id: p.id, company: p.company, date: kstDateKey(new Date(p.deadlineAt as string)) }));
 }

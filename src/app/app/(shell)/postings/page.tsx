@@ -30,7 +30,7 @@ function PostingsSkeleton() {
 export default function PostingsPage() {
   return (
     <PageBody>
-      <PageTitle title="내 공고" description="상태 탭과 우선순위·근로형태로 걸러 볼 수 있어요." />
+      <PageTitle title="내 공고" />
       <Suspense fallback={<PostingsSkeleton />}>
         <Postings />
       </Suspense>

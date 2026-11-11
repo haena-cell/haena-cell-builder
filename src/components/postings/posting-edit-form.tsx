@@ -28,7 +28,9 @@ export function PostingEditForm({
   posting,
   onSave,
   onCancel,
+  formId,
 }: {
+  formId?: string; // 있으면 [취소·저장] 은 바깥(공고 제목 옆)에 두고 폼 아래에서는 뺀다 (2026-11-12)
   posting: Posting;
   onSave: (p: Posting) => Promise<string | null>; // 실패하면 안내 문구, 성공하면 null
   onCancel: () => void;
@@ -71,7 +73,7 @@ export function PostingEditForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form id={formId} onSubmit={submit} className="flex flex-col gap-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`edit-company-${posting.id}`}>기업명</Label>
@@ -116,10 +118,12 @@ export function PostingEditForm({
         <StepEditor items={steps} onChange={setSteps} />
       </div>
       {error && <p className="rounded-2xl bg-destructive-soft px-4 py-3 text-sm text-destructive" role="alert">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" size="lg" onClick={onCancel}>취소</Button>
-        <Button type="submit" size="lg" className="px-6" disabled={saving}>{saving ? "저장 중…" : "저장"}</Button>
-      </div>
+      {!formId && (
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" size="lg" onClick={onCancel}>취소</Button>
+          <Button type="submit" size="lg" className="px-6" disabled={saving}>{saving ? "저장 중…" : "저장"}</Button>
+        </div>
+      )}
     </form>
   );
 }

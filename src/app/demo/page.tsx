@@ -19,7 +19,7 @@ async function Home() {
 export default function DemoHomePage() {
   return (
     <PageBody>
-      <PageTitle title="홈" description="마감이 가까운 공고와 남은 할 일이에요." />
+      <PageTitle title="홈" />
       <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="불러오는 중" />}>
         <Home />
       </Suspense>

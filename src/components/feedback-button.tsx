@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare } from "lucide-react";
+import { Mascot } from "@/components/mascot";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,7 +35,8 @@ export function FeedbackButton({ className }: { className?: string }) {
   return (
     <>
       <Button type="button" variant="ghost" size="sm" className={className} onClick={() => setOpen(true)}>
-        <MessageSquare data-icon="inline-start" />
+        {/* 편지를 문 강아지 (2026-11-12 사용자 요청) */}
+        <Mascot pose="ok" size={26} className="-my-1 -ml-0.5" />
         의견 보내기
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

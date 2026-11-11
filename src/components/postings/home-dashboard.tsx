@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateBlock, DeadlineBadge } from "@/components/postings/posting-card";
-import { deadlineKey, formatDay, isUrgent, monthCells, WEEKDAYS } from "@/components/postings/posting-calendar";
+import { deadlineKey, formatDay, isApplied, isUrgent, monthCells, WEEKDAYS } from "@/components/postings/posting-calendar";
 import { DueChip } from "@/components/postings/prep-todos";
-import { StepDots } from "@/components/postings/step-bar";
+import { StepDoneButton, StepDots } from "@/components/postings/step-bar";
 import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
-import { currentStepIndex, isSubmitStep, type Posting } from "@/lib/postings";
+import { currentStepIndex, type Posting } from "@/lib/postings";
 import { cn } from "@/lib/utils";
 import { stepDoneToast } from "@/components/postings/step-done-toast";
 import { Mascot } from "@/components/mascot";
@@ -80,7 +80,9 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
               ...p,
               prepItems: p.prepItems.map((it) =>
                 row.kind === "item"
-                  ? it.id === row.id ? { ...it, done } : it
+                  ? it.id === row.id
+                    ? { ...it, done, subtasks: done ? it.subtasks.map((t) => ({ ...t, done: true })) : it.subtasks }
+                    : it
                   : { ...it, subtasks: it.subtasks.map((t) => (t.id === row.id ? { ...t, done } : t)) },
               ),
             },
@@ -125,9 +127,13 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
 
   async function toggle(row: TodoRow) {
     const done = !row.done;
+    // 항목을 체크하면 아래 하위 할 일도 함께 끝낸다 (2026-11-12 사용자 요청)
+    const subs = row.kind === "item" && done ? (row.posting.prepItems.find((it) => it.id === row.id)?.subtasks ?? []).filter((t) => !t.done) : [];
     patch(row, done);
     if (done) mark(row.key, true);
+    subs.forEach((t) => mark(`s-${t.id}`, true));
     const result = row.kind === "item" ? await setPrepDone(row.id, done) : await updateSubtask(row.id, { done });
+    if (result.ok) await Promise.all(subs.map((t) => updateSubtask(t.id, { done: true })));
     if (!result.ok) {
       patch(row, !done);
       toast.error(result.message);
@@ -184,15 +190,11 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                       </div>
                       <DeadlineBadge posting={p} daysLeft={daysOf(p)} />
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <StepDots steps={p.steps} current={current} />
-                        <span className="truncate text-xs text-muted-foreground">{p.steps[current]?.name}</span>
-                      </div>
-                      <Button variant="outline" size="sm" className="relative z-10" onClick={() => completeStep(p, current)}>
-                        <Check data-icon="inline-start" />
-                        {isSubmitStep(p.steps[current].name) ? "제출 완료" : "다음 단계로"}
-                      </Button>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <StepDots steps={p.steps} current={current} />
+                      <span className="min-w-0 truncate text-xs text-muted-foreground">{p.steps[current]?.name}</span>
+                      {/* 지금 단계 끝내기: 진행 단계 바로 옆 둥근 체크 (2026-11-12) */}
+                      <StepDoneButton stepName={p.steps[current].name} onClick={() => completeStep(p, current)} className="-my-1 ml-auto" />
                     </div>
                   </div>
                 </li>
@@ -225,7 +227,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                   aria-pressed={isSelected}
                   aria-label={`${formatDay(key)}${items.length ? `, 마감 공고 ${items.length}개` : ""}${hasTodo ? ", 할 일 있음" : ""}`}
                   className={cn(
-                    "group relative flex h-11 items-center justify-center text-[13px] font-medium tabular-nums",
+                    "group relative flex min-h-11 min-w-0 flex-col items-center gap-0.5 pb-2 text-[13px] font-medium tabular-nums md:min-h-[72px] md:pb-1",
                     i % 7 === 0 && !isSelected && !isToday && "text-destructive",
                   )}
                 >
@@ -239,19 +241,33 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                   >
                     {Number(key.slice(8))}
                   </span>
+                  {/* 휴대폰: 점 / 넓은 화면: 달력 화면처럼 마감 공고 이름을 날짜 바로 아래에 (2026-11-12 사용자 요청) */}
                   {(items.length > 0 || hasTodo) && (
-                    <span className="absolute bottom-0 flex gap-0.5" aria-hidden>
+                    <span className="flex gap-0.5 md:hidden" aria-hidden>
                       {items.length > 0 && (
-                        <span
-                          className={cn(
-                            "size-1 rounded-full",
-                            items.some((p) => isUrgent(p, today)) ? "bg-destructive" : "bg-foreground/40",
-                          )}
-                        />
+                        <span className={cn("size-1 rounded-full", items.some((p) => isUrgent(p, today)) ? "bg-destructive" : "bg-foreground/40")} />
                       )}
                       {hasTodo && <span className="size-1 rounded-full bg-due-foreground" />}
                     </span>
                   )}
+                  {items.length > 0 && (
+                    <span className="hidden w-full min-w-0 flex-col gap-px md:flex" aria-hidden>
+                      {items.slice(0, 2).map((p) => (
+                        <span
+                          key={p.id}
+                          className={cn(
+                            "flex min-w-0 items-center justify-center gap-0.5 text-[10px] leading-[14px] font-normal text-foreground/80",
+                            isApplied(p) && "line-through opacity-60",
+                          )}
+                        >
+                          {isUrgent(p, today) && <span className="size-1 shrink-0 rounded-full bg-destructive" />}
+                          <span className="truncate">{p.company}</span>
+                        </span>
+                      ))}
+                      {items.length > 2 && <span className="text-[10px] leading-[14px] text-muted-foreground">+{items.length - 2}</span>}
+                    </span>
+                  )}
+                  {hasTodo && <span className="hidden size-1 rounded-full bg-due-foreground md:block" aria-hidden />}
                 </button>
               );
             })}

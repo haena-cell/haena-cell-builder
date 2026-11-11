@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingDetail } from "@/components/postings/posting-detail";
-import { getMyPosting } from "@/lib/postings-db";
+import { getMyPosting, getMyPostings } from "@/lib/postings-db";
+import { otherDeadlines } from "@/lib/postings";
 
 export const metadata: Metadata = {
   title: "공고 상세",
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
 
 async function Detail({ params }: { params: Promise<{ id: string }> }) {
   await connection();
-  const posting = await getMyPosting((await params).id);
+  const id = (await params).id;
+  const [posting, all] = await Promise.all([getMyPosting(id), getMyPostings()]);
   if (!posting) {
     return (
       <>
@@ -28,7 +30,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
       </>
     );
   }
-  return <PostingDetail initialPosting={posting} nowIso={new Date().toISOString()} />;
+  return <PostingDetail initialPosting={posting} nowIso={new Date().toISOString()} otherDeadlines={otherDeadlines(all, posting.id)} />;
 }
 
 export default function PostingDetailPage({ params }: PageProps<"/app/postings/[id]">) {

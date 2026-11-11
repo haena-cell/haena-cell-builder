@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingDetail } from "@/components/postings/posting-detail";
 import { demoPostings } from "@/lib/demo-postings";
+import { otherDeadlines } from "@/lib/postings";
 
 export const metadata: Metadata = {
   title: "공고 상세",
@@ -16,7 +17,8 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const now = new Date();
   const { id } = await params;
-  const posting = demoPostings(now).find((p) => p.id === id);
+  const all = demoPostings(now);
+  const posting = all.find((p) => p.id === id);
   if (!posting) {
     return (
       <>
@@ -29,7 +31,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
       </>
     );
   }
-  return <PostingDetail initialPosting={posting} nowIso={now.toISOString()} />;
+  return <PostingDetail initialPosting={posting} nowIso={now.toISOString()} otherDeadlines={otherDeadlines(all, posting.id)} />;
 }
 
 export default function DemoPostingDetailPage({ params }: { params: Promise<{ id: string }> }) {

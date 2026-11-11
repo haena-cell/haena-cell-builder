@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, Check, ChevronDown, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,12 @@ import { DeadlineWeek } from "@/components/postings/deadline-week";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { PostingEditForm } from "@/components/postings/posting-edit-form";
 import { PrepTodos } from "@/components/postings/prep-todos";
-import { StepBar } from "@/components/postings/step-bar";
+import { StepBar, StepDoneButton } from "@/components/postings/step-bar";
 import { canAddToCalendar, googleCalendarUrl, icsFile } from "@/lib/calendar";
 import {
   currentStepIndex,
   daysLeftFor,
   formatDeadline,
-  isSubmitStep,
   kstDateKey,
   withCurrentStep,
   type Posting,
@@ -39,7 +38,21 @@ function Section({ title, children, aside }: { title: string; children: React.Re
   );
 }
 
-export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Posting; nowIso: string }) {
+// 제목 옆 [저장] 이 공고 수정 폼을 제출한다
+const EDIT_FORM_ID = "posting-edit-form";
+
+// 다른 공고의 마감일: 상세의 마감 주 달력에 함께 보여 준다 (2026-11-12)
+export type OtherPostingDeadline = { id: string; company: string; date: string };
+
+export function PostingDetail({
+  initialPosting,
+  nowIso,
+  otherDeadlines = [],
+}: {
+  initialPosting: Posting;
+  nowIso: string;
+  otherDeadlines?: OtherPostingDeadline[];
+}) {
   const router = useRouter();
   const href = useAppHref();
   const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePostingFull } = usePostingActions();
@@ -47,7 +60,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [choosingStep, setChoosingStep] = useState(false);
+  const [pickedStep, setPickedStep] = useState<number | null>(null); // 단계 직접 고르기에서 고른 단계 (저장 전)
   const now = new Date(nowIso);
 
   // 화면을 먼저 바꾸고 DB 에 저장한다. 실패하면 되돌린다.
@@ -89,7 +102,6 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
       () => setCurrentStep(posting.id, target),
     );
     if (ok) toast(`지금 단계: ${posting.steps[target]?.name ?? "전형 끝"}`);
-    setChoosingStep(false);
   }
 
 
@@ -129,6 +141,30 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
           <DeadlineBadge posting={posting} daysLeft={daysLeftFor(posting, now)} />
+          {/* 수정 · 삭제 · 저장은 제목 옆에 (2026-11-12 사용자 요청) */}
+          {editing ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>취소</Button>
+              <Button type="submit" form={EDIT_FORM_ID} size="sm">저장</Button>
+            </>
+          ) : confirmDelete ? (
+            <span className="flex items-center gap-1.5" role="alert">
+              <span className="text-sm">정말 지울까요?</span>
+              <Button variant="destructive" size="sm" onClick={remove} disabled={deleting}>{deleting ? "지우는 중…" : "지우기"}</Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>취소</Button>
+            </span>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil data-icon="inline-start" />
+                수정
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+                <Trash2 data-icon="inline-start" />
+                삭제
+              </Button>
+            </>
+          )}
         </div>
       </PageTitle>
 
@@ -136,6 +172,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
         <div className="grid items-start gap-4 lg:grid-cols-[3fr_2fr]">
           <Card className="min-w-0 px-4 md:px-6">
             <PostingEditForm
+              formId={EDIT_FORM_ID}
               posting={posting}
               onCancel={() => setEditing(false)}
               onSave={async (next) => {
@@ -168,22 +205,19 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
                 <p className="text-sm">
                   지금: <span className="font-semibold">{step ? step.name : "전형 끝"}</span>
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {doneSteps > 0 && (
-                    <Button variant="ghost" size="lg" className="px-3" onClick={() => moveToStep(doneSteps - 1)}>
+                    <Button variant="ghost" size="sm" onClick={() => moveToStep(doneSteps - 1)}>
                       <Undo2 data-icon="inline-start" />
                       이전 단계로
                     </Button>
                   )}
-                  {step && (
-                    <Button variant="outline" size="lg" className="px-3" onClick={() => completeStep(current)}>
-                      <Check data-icon="inline-start" />
-                      {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
-                    </Button>
-                  )}
+                  {/* 지금 단계 끝내기: 둥근 체크 하나 (2026-11-12) */}
+                  {step && <StepDoneButton stepName={step.name} onClick={() => completeStep(current)} className="size-9" />}
                 </div>
               </div>
-              {choosingStep ? (
+              {pickedStep !== null ? (
+                // 단계 직접 고르기: 고른 뒤 [저장] 을 눌러야 바뀐다 (2026-11-12 사용자 요청)
                 <div className="flex flex-col gap-2 rounded-2xl bg-muted p-3">
                   <p className="text-xs text-muted-foreground">지금 어느 단계인가요? 앞 단계는 끝낸 것으로 표시돼요.</p>
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="지금 단계">
@@ -193,23 +227,32 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
                         variant="outline"
                         size="sm"
                         role="radio"
-                        aria-checked={doneSteps === i}
-                        className={cn(doneSteps === i && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
-                        onClick={() => (doneSteps === i ? setChoosingStep(false) : moveToStep(i))}
+                        aria-checked={pickedStep === i}
+                        className={cn(pickedStep === i && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
+                        onClick={() => setPickedStep(i)}
                       >
                         {name}
                       </Button>
                     ))}
                   </div>
-                  <Button variant="ghost" size="sm" className="self-start" onClick={() => setChoosingStep(false)}>
-                    닫기
-                  </Button>
+                  <div className="flex gap-2 self-end">
+                    <Button variant="ghost" size="sm" onClick={() => setPickedStep(null)}>취소</Button>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        if (pickedStep !== doneSteps) await moveToStep(pickedStep);
+                        setPickedStep(null);
+                      }}
+                    >
+                      저장
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <button
                   type="button"
                   className="self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                  onClick={() => setChoosingStep(true)}
+                  onClick={() => setPickedStep(doneSteps)}
                 >
                   단계 직접 고르기
                 </button>
@@ -220,7 +263,11 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
             <Section title="마감">
               <p className="text-base font-semibold tabular-nums">{formatDeadline(posting)}</p>
               {posting.deadlineKind === "date" && posting.deadlineAt && (
-                <DeadlineWeek deadline={kstDateKey(new Date(posting.deadlineAt))} today={kstDateKey(now)} />
+                <DeadlineWeek
+                  deadline={kstDateKey(new Date(posting.deadlineAt))}
+                  today={kstDateKey(now)}
+                  others={otherDeadlines.map((o) => ({ ...o, href: href(`/app/postings/${o.id}`) }))}
+                />
               )}
               {canAddToCalendar(posting) ? (
                 <div className="flex flex-wrap gap-2">
@@ -292,27 +339,6 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
                 onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
               />
             </Section>
-
-
-            {/* 수정 · 삭제 */}
-            <div className="flex flex-wrap items-center gap-2 px-1">
-              <Button variant="outline" size="lg" className="px-3" onClick={() => setEditing(true)}>
-                <Pencil data-icon="inline-start" />
-                수정
-              </Button>
-              {confirmDelete ? (
-                <div className="flex items-center gap-2" role="alert">
-                  <span className="text-sm">정말 지울까요?</span>
-                  <Button variant="destructive" size="lg" className="px-3" onClick={remove} disabled={deleting}>{deleting ? "지우는 중…" : "지우기"}</Button>
-                  <Button variant="ghost" size="lg" className="px-3" onClick={() => setConfirmDelete(false)}>취소</Button>
-                </div>
-              ) : (
-                <Button variant="destructive" size="lg" className="px-3" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 data-icon="inline-start" />
-                  삭제
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       )}

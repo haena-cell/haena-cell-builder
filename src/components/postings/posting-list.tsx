@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, ChevronDown, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
+import { ChevronDown, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,12 +32,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useAppHref, usePostingActions } from "@/components/postings/demo-context";
 import { DeadlineBadge } from "@/components/postings/posting-card";
 import { PostingEditForm } from "@/components/postings/posting-edit-form";
-import { StepDots } from "@/components/postings/step-bar";
+import { StepDoneButton, StepDots } from "@/components/postings/step-bar";
 import {
   currentStepIndex,
   daysLeftFor,
   EMPLOYMENT_TYPES,
-  isSubmitStep,
   kstDateKey,
   PRIORITIES,
   withCurrentStep,
@@ -182,6 +181,32 @@ function PickMenu({
   );
 }
 
+// 상태 칸: 누르면 지금 단계를 드롭다운에서 고른다 (2026-11-12 사용자 요청). 앞 단계는 끝낸 것으로 표시된다
+function StatusMenu({ posting, days, onPick }: { posting: Posting; days: number | null; onPick: (target: number) => void }) {
+  const current = currentStepIndex(posting.steps);
+  const value = String(current === -1 ? posting.steps.length : current);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label={`${posting.company} 상태 바꾸기`} className="relative z-10 inline-flex items-center gap-0.5 rounded-xs transition-opacity hover:opacity-80">
+          <DeadlineBadge posting={posting} daysLeft={days} />
+          <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuLabel>지금 단계</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={value} onValueChange={(v) => onPick(Number(v))}>
+          {[...posting.steps.map((s) => s.name), "전형 끝"].map((name, i) => (
+            <DropdownMenuRadioItem key={`${name}-${i}`} value={String(i)}>
+              {name}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function PostingList({
   initialPostings,
   daysLeft,
@@ -248,8 +273,10 @@ export function PostingList({
   }
 
   // 전형 끝 → 마지막 단계로 되돌리기
-  async function handleBack(posting: Posting) {
-    const target = posting.steps.length - 1;
+  const handleBack = (posting: Posting) => moveTo(posting, posting.steps.length - 1);
+
+  // 지금 단계 바꾸기 (상태 드롭다운·되돌리기). target 이 단계 수면 전형 끝
+  async function moveTo(posting: Posting, target: number) {
     const before = posting.steps;
     replace(posting.id, (p) => ({ ...p, steps: withCurrentStep(before, target) }));
     const result = await setCurrentStep(posting.id, target);
@@ -257,7 +284,7 @@ export function PostingList({
       replace(posting.id, (p) => ({ ...p, steps: before }));
       return toast.error(result.message);
     }
-    toast(`${posting.company} · 지금 단계: ${posting.steps[target].name}`);
+    toast(`${posting.company} · 지금 단계: ${posting.steps[target]?.name ?? "전형 끝"}`);
   }
 
   async function saveMeta(posting: Posting, meta: { priority?: Priority; employmentType?: string | null }) {
@@ -417,20 +444,24 @@ export function PostingList({
 
                 {/* 휴대폰: 상태·마감은 오른쪽 위에 */}
                 <div className={cn("flex flex-col items-end gap-1 lg:hidden", dim)}>
-                  <DeadlineBadge posting={posting} daysLeft={days} />
+                  <StatusMenu posting={posting} days={days} onPick={(t) => moveTo(posting, t)} />
                   <span className="text-xs text-muted-foreground tabular-nums">{formatShortDeadline(posting)}</span>
                 </div>
 
                 {/* 진행 단계 */}
-                <div className={cn("col-span-2 flex min-w-0 flex-col items-start gap-1 lg:col-span-1", dim)}>
-                  <div className="hidden w-full lg:@[60rem]:block">
-                    <StepDots steps={posting.steps} current={current} />
+                <div className="col-span-2 flex min-w-0 items-center gap-2 lg:col-span-1">
+                  <div className={cn("flex min-w-0 flex-col items-start gap-1", dim)}>
+                    <div className="hidden w-full lg:@[60rem]:block">
+                      <StepDots steps={posting.steps} current={current} />
+                    </div>
+                    <span className="truncate text-xs text-muted-foreground">{step ? step.name : "전형 끝"}</span>
                   </div>
-                  <span className="truncate text-xs text-muted-foreground">{step ? step.name : "전형 끝"}</span>
+                  {/* 지금 단계 끝내기: 진행 단계 바로 옆 둥근 체크 (2026-11-12) */}
+                  {step && <StepDoneButton stepName={step.name} onClick={() => handleComplete(posting, current)} />}
                 </div>
 
                 <div className={cn("hidden lg:block", dim)}>
-                  <DeadlineBadge posting={posting} daysLeft={days} />
+                  <StatusMenu posting={posting} days={days} onPick={(t) => moveTo(posting, t)} />
                 </div>
                 <span className={cn("hidden text-sm tabular-nums lg:block", dim)}>{formatShortDeadline(posting)}</span>
 
@@ -456,12 +487,7 @@ export function PostingList({
                     />
                   </div>
                   <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:justify-self-end">
-                    {step ? (
-                      <Button variant="outline" size="sm" className="relative z-10" onClick={() => handleComplete(posting, current)}>
-                        <Check data-icon="inline-start" />
-                        {isSubmitStep(step.name) ? "제출 완료" : "다음 단계로"}
-                      </Button>
-                    ) : (
+                    {!step && (
                       <Button variant="ghost" size="sm" className="relative z-10" onClick={() => handleBack(posting)}>
                         <Undo2 data-icon="inline-start" />
                         이전 단계로
