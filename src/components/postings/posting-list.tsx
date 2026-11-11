@@ -339,7 +339,7 @@ export function PostingList({
   return (
     <Card className="@container gap-0 px-0 py-0 md:px-0 md:py-0">
       {/* 상태 탭 */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border-subtle px-3 pt-3 md:px-6 md:pt-4" role="tablist" aria-label="상태">
+      <div className="flex gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border-subtle px-3 pt-3 md:px-6 md:pt-4" role="tablist" aria-label="상태">
         {TABS.map((t) => (
           <button
             key={t.value}
