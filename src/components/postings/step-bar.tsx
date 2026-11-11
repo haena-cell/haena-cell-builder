@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { PostingStep } from "@/lib/postings";
 
-// 전형 단계 표시바 (DESIGN v3): 얇은 막대 칸. 끝난 단계 주황, 지금 단계 어두운 회색, 남은 단계 옅은 회색 (2026-11-12)
+// 전형 단계 표시바 (DESIGN v3): 얇은 막대 칸. 끝난 단계만 주황, 지금 단계·남은 단계는 옅은 회색 (2026-11-12)
 export function StepBar({ steps, current }: { steps: PostingStep[]; current: number }) {
   return (
     <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
@@ -14,7 +14,7 @@ export function StepBar({ steps, current }: { steps: PostingStep[]; current: num
               className={cn(
                 "h-1 rounded-full",
                 done && "bg-primary",
-                isCurrent && !done && "bg-foreground/45",
+                isCurrent && !done && "bg-accent",
                 !done && !isCurrent && "bg-accent",
               )}
             />
@@ -33,7 +33,7 @@ export function StepBar({ steps, current }: { steps: PostingStep[]; current: num
   );
 }
 
-// 목록 표의 진행 단계 (D-26 → DESIGN v3): 단계마다 얇은 막대 칸. 끝난 단계 주황, 지금 단계 어두운 회색, 남은 단계 옅은 회색 (2026-11-12)
+// 목록 표의 진행 단계 (D-26 → DESIGN v3): 단계마다 얇은 막대 칸. 끝난 단계만 주황, 지금 단계·남은 단계는 옅은 회색 (2026-11-12)
 export function StepDots({ steps, current }: { steps: PostingStep[]; current: number }) {
   return (
     <ol className="flex w-28 max-w-full items-center gap-1 md:w-36" aria-label="전형 단계">
@@ -47,7 +47,7 @@ export function StepDots({ steps, current }: { steps: PostingStep[]; current: nu
               className={cn(
                 "block h-1 rounded-full",
                 done && "bg-primary",
-                isCurrent && !done && "bg-foreground/45",
+                isCurrent && !done && "bg-accent",
                 !done && !isCurrent && "bg-accent",
               )}
             >
