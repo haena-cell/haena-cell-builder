@@ -71,7 +71,7 @@ function DueDate({
 export function DueChip({ value, done, today, onClick }: { value: string; done: boolean; today: string; onClick?: () => void }) {
   const days = daysToDate(value, today);
   const className = cn(
-    "shrink-0 rounded-full bg-due px-2.5 py-0.5 text-xs font-medium text-due-foreground tabular-nums",
+    "shrink-0 rounded-xs bg-due px-2.5 py-0.5 text-xs font-medium text-due-foreground tabular-nums",
     onClick && "hover:opacity-80",
     !done && days <= 1 && "bg-destructive-soft text-destructive",
     done && "bg-secondary text-muted-foreground",

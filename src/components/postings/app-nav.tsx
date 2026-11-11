@@ -35,8 +35,8 @@ export function SideNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-11 items-center gap-3 rounded-full px-4 text-[15px] text-muted-foreground transition-colors hover:text-foreground",
-              active && "bg-card font-semibold text-foreground shadow-soft",
+              "flex h-11 items-center gap-2.5 rounded-lg px-3 text-[15px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground [&_svg]:text-muted-foreground",
+              active && "bg-muted font-semibold text-primary hover:text-primary [&_svg]:text-primary",
             )}
           >
             <Icon className="size-[18px]" />
@@ -69,7 +69,7 @@ export function MobileNav() {
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] text-muted-foreground transition-colors min-[400px]:w-16",
-                active && "bg-primary font-semibold text-primary-foreground",
+                active && "bg-muted font-semibold text-primary",
               )}
             >
               <Icon className="size-[18px]" />
@@ -78,7 +78,7 @@ export function MobileNav() {
           );
         })}
       </nav>
-      <Button size="icon-lg" className="fixed right-3 bottom-4 z-20 size-14 lg:hidden" asChild>
+      <Button size="icon-lg" className="fixed right-3 bottom-4 z-20 size-14 rounded-full shadow-soft lg:hidden" asChild>
         <Link href="/app/new" aria-label="공고 넣기">
           <Plus className="size-6" />
         </Link>

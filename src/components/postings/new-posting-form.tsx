@@ -216,7 +216,7 @@ export function NewPostingForm() {
                 value={url}
                 onChange={(e) => { setUrl(e.target.value); setSaved(null); }}
                 disabled={loading}
-                className="h-12 rounded-full pl-10"
+                className="h-12 pl-10"
               />
             </div>
             <div className="flex flex-wrap items-center gap-1.5 px-1">
@@ -275,7 +275,7 @@ export function NewPostingForm() {
                 {/* 기기 안에서만 보여 주는 미리보기 */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={image} alt="고른 캡처 미리보기" className="mx-auto max-h-80 w-auto" />
-                <span className="absolute right-3 bottom-3 rounded-full bg-card px-3 py-1.5 text-xs font-medium shadow-soft">
+                <span className="absolute right-3 bottom-3 rounded-sm bg-card px-3 py-1.5 text-xs font-medium shadow-soft">
                   다른 캡처 고르기
                 </span>
               </button>

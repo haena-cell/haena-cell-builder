@@ -104,7 +104,7 @@ function FilterMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(active && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground aria-expanded:bg-primary aria-expanded:text-primary-foreground")}>
+        <Button variant="outline" size="sm" className={cn(active && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background aria-expanded:bg-primary aria-expanded:text-primary-foreground")}>
           {label}
           {active && <span className="tabular-nums">{selected.length}</span>}
           <ChevronDown data-icon="inline-end" />
@@ -160,7 +160,7 @@ function PickMenu({
           type="button"
           aria-label={`${label}: ${display}, 바꾸기`}
           className={cn(
-            "relative z-10 inline-flex h-7 max-w-full items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-opacity hover:opacity-80",
+            "relative z-10 inline-flex h-7 max-w-full items-center gap-1 rounded-sm px-2.5 text-xs font-medium transition-opacity hover:opacity-80",
             chipClassName ?? "bg-secondary text-foreground/70",
           )}
         >
@@ -312,7 +312,7 @@ export function PostingList({
   return (
     <Card className="@container gap-0 px-0 py-0 md:px-0 md:py-0">
       {/* 상태 탭 */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border px-3 pt-3 md:px-6 md:pt-4" role="tablist" aria-label="상태">
+      <div className="flex gap-1 overflow-x-auto border-b border-border-subtle px-3 pt-3 md:px-6 md:pt-4" role="tablist" aria-label="상태">
         {TABS.map((t) => (
           <button
             key={t.value}
@@ -321,14 +321,14 @@ export function PostingList({
             aria-selected={tab === t.value}
             onClick={() => setTab(t.value)}
             className={cn(
-              "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2.5 pb-3 text-sm text-muted-foreground transition-colors hover:text-foreground",
-              tab === t.value && "border-primary font-semibold text-foreground",
+              "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2.5 pb-3 text-[15px] font-medium text-muted-foreground transition-colors hover:text-foreground",
+              tab === t.value && "border-foreground font-semibold text-foreground",
             )}
           >
             {t.label}
             <span
               className={cn(
-                "rounded-full px-1.5 text-xs tabular-nums",
+                "rounded-xs px-1.5 text-xs tabular-nums",
                 t.value === "urgent" && count(t.value) > 0 ? "bg-destructive-soft text-destructive" : "bg-secondary",
               )}
             >

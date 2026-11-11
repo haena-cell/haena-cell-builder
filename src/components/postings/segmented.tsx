@@ -17,7 +17,7 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn("flex rounded-full bg-muted p-1", className)} role="radiogroup" aria-label={label}>
+    <div className={cn("flex rounded-md bg-muted p-1", className)} role="radiogroup" aria-label={label}>
       {options.map(({ value: v, label: text, icon: Icon }) => (
         <button
           key={v}
@@ -27,8 +27,8 @@ export function Segmented<T extends string>({
           disabled={disabled}
           onClick={() => onChange(v)}
           className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60",
-            value === v && "bg-primary font-semibold text-primary-foreground shadow-soft hover:text-primary-foreground",
+            "flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3.5 py-2 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60",
+            value === v && "bg-card font-semibold text-foreground shadow-xs ring-1 ring-border-subtle hover:text-foreground",
           )}
         >
           {Icon && <Icon className="size-4" />}

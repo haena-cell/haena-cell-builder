@@ -107,7 +107,7 @@ export function PostingCalendar({ postings, today }: { postings: Posting[]; toda
             <div
               key={w}
               className={cn(
-                "rounded-full bg-muted py-1 text-center text-xs font-medium text-muted-foreground",
+                "py-1 text-center text-xs font-medium text-muted-foreground",
                 i === 0 && "text-destructive",
               )}
             >
@@ -128,16 +128,17 @@ export function PostingCalendar({ postings, today }: { postings: Posting[]; toda
                 aria-pressed={isSelected}
                 aria-label={`${formatDay(key)}${items.length ? `, 마감 공고 ${items.length}개` : ""}`}
                 className={cn(
-                  "flex min-h-12 flex-col items-center gap-1 rounded-xl bg-muted p-1 text-left transition-colors hover:bg-accent md:min-h-20 md:items-stretch md:p-1.5",
-                  isToday && !isSelected && "ring-1 ring-foreground",
-                  isSelected && "bg-primary text-primary-foreground hover:bg-primary",
+                  "flex min-h-12 flex-col items-center gap-1 rounded-lg p-1 text-left transition-colors hover:bg-muted md:min-h-20 md:items-stretch md:p-1.5",
+                  isSelected && "bg-primary-soft hover:bg-primary-soft",
                 )}
               >
+                {/* 날짜 숫자: 고른 날 파란 동그라미, 오늘 파란 테두리 (DESIGN v3) */}
                 <span
                   className={cn(
-                    "text-xs tabular-nums md:px-0.5",
-                    i % 7 === 0 && !isSelected && "text-destructive",
-                    (isToday || isSelected) && "font-bold",
+                    "flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-medium tabular-nums",
+                    i % 7 === 0 && !isSelected && !isToday && "text-destructive",
+                    isToday && !isSelected && "font-bold text-primary ring-[1.5px] ring-primary ring-inset",
+                    isSelected && "bg-primary font-bold text-primary-foreground",
                   )}
                 >
                   {Number(key.slice(8))}
@@ -152,7 +153,7 @@ export function PostingCalendar({ postings, today }: { postings: Posting[]; toda
                           key={p.id}
                           className={cn(
                             "size-1.5 rounded-full",
-                            isUrgent(p, today) ? "bg-destructive" : isSelected ? "bg-primary-foreground" : "bg-foreground/50",
+                            isUrgent(p, today) ? "bg-destructive" : "bg-foreground/40",
                           )}
                         />
                       ))}

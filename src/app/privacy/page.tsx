@@ -79,7 +79,7 @@ export default function PrivacyPage() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-3 pb-16 md:px-5">
-        <article className="flex flex-col gap-10 rounded-[28px] bg-card px-5 py-10 md:rounded-[36px] md:px-12 md:py-14">
+        <article className="flex flex-col gap-10 rounded-2xl bg-card px-5 py-10 md:px-12 md:py-14">
           <div className="flex flex-col gap-3">
             <h1 className="text-3xl font-bold tracking-tight">개인정보처리방침</h1>
             <p className="text-base leading-relaxed text-muted-foreground">

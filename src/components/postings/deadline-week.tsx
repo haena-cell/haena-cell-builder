@@ -41,8 +41,8 @@ export function DeadlineWeek({ deadline, today }: { deadline: string; today: str
               key={key}
               aria-current={isDeadline ? "date" : undefined}
               className={cn(
-                "flex flex-col items-center gap-0.5 rounded-xl bg-muted py-2 text-sm tabular-nums",
-                isToday && "ring-1 ring-foreground",
+                "flex flex-col items-center gap-0.5 rounded-lg py-2 text-sm font-medium tabular-nums",
+                isToday && !isDeadline && "text-primary ring-[1.5px] ring-primary ring-inset",
                 isDeadline && "bg-primary font-bold text-primary-foreground",
               )}
             >

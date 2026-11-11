@@ -44,7 +44,7 @@ export function DocPicker({ value, onChange }: { value: string[]; onChange: (doc
           const on = value.includes(doc);
           return (
             <Button key={doc} type="button" variant="outline" size="sm" aria-pressed={on}
-              className={cn(on && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
+              className={cn(on && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
               onClick={() => onChange(on ? value.filter((d) => d !== doc) : [...value, doc])}>
               {on && <Check data-icon="inline-start" />}
               {doc}
@@ -125,7 +125,7 @@ export function StepEditor({ items, onChange }: { items: StepItem[]; onChange: (
             <li
               key={step.id}
               style={dragging ? { transform: `translateY(${drag.dy}px)` } : undefined}
-              className={cn("relative flex items-center gap-2 py-1", dragging && "z-10 rounded-full bg-card shadow-soft")}
+              className={cn("relative flex items-center gap-2 py-1", dragging && "z-10 rounded-lg bg-card shadow-soft")}
             >
               {showLine(i) && <span className="absolute inset-x-0 -top-px h-0.5 rounded-full bg-primary" aria-hidden />}
               {i === items.length - 1 && showLine(items.length) && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" aria-hidden />}
@@ -143,7 +143,7 @@ export function StepEditor({ items, onChange }: { items: StepItem[]; onChange: (
                 <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{i + 1}</span>
                 <span className={cn("w-px flex-1", i === items.length - 1 || dragging ? "bg-transparent" : "bg-input")} />
               </span>
-              <span className="min-w-0 flex-1 truncate rounded-full bg-card px-3.5 py-2 text-sm ring-1 ring-border">{step.name}</span>
+              <span className="min-w-0 flex-1 truncate rounded-lg bg-card px-3.5 py-2 text-sm ring-1 ring-input">{step.name}</span>
               <span className="flex shrink-0">
                 <Button type="button" variant="ghost" size="icon-sm" aria-label={`${step.name} 위로`} disabled={i === 0} onClick={() => move(i, i - 1)}><ArrowUp /></Button>
                 <Button type="button" variant="ghost" size="icon-sm" aria-label={`${step.name} 아래로`} disabled={i === items.length - 1} onClick={() => move(i, i + 1)}><ArrowDown /></Button>

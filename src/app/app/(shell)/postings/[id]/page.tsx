@@ -34,7 +34,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
 export default function PostingDetailPage({ params }: PageProps<"/app/postings/[id]">) {
   return (
     <PageBody>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card md:rounded-[28px]" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" />}>
         <Detail params={params} />
       </Suspense>
     </PageBody>

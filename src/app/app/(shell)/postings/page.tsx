@@ -23,7 +23,7 @@ async function Postings() {
 
 function PostingsSkeleton() {
   return (
-    <div className="h-96 animate-pulse rounded-2xl bg-card md:rounded-[28px]" aria-label="공고를 불러오는 중" />
+    <div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="공고를 불러오는 중" />
   );
 }
 

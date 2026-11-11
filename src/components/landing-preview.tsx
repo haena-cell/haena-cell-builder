@@ -20,9 +20,9 @@ async function PreviewHome() {
 
 export function LandingPreview() {
   return (
-    <div className="group relative h-[420px] overflow-hidden rounded-[28px] bg-background ring-1 ring-border md:h-[560px] md:rounded-[36px]">
+    <div className="group relative h-[420px] overflow-hidden rounded-2xl bg-background ring-1 ring-border md:h-[560px]">
       <div inert className="p-3 md:p-5">
-        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card md:rounded-[28px]" />}>
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" />}>
           <PreviewHome />
         </Suspense>
       </div>

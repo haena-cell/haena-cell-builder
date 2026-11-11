@@ -166,7 +166,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
             {upcoming.slice(0, 4).map((p) => {
               const current = currentStepIndex(p.steps);
               return (
-                <li key={p.id} className="relative flex items-stretch gap-3 rounded-[20px] border border-border p-3 transition-colors hover:bg-muted/50">
+                <li key={p.id} className="relative flex items-stretch gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted/50">
                   <div className="flex w-12 shrink-0 flex-col items-center justify-center border-r border-border pr-3">
                     <DateBlock posting={p} />
                   </div>
@@ -176,7 +176,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                         {/* 카드 전체를 누르면 상세로 (버튼은 위에 따로 눌림) */}
                         <Link
                           href={href(`/app/postings/${p.id}`)}
-                          className="block truncate text-sm font-semibold after:absolute after:inset-0 after:rounded-[20px]"
+                          className="block truncate text-sm font-semibold after:absolute after:inset-0 after:rounded-xl"
                         >
                           {p.company}
                         </Link>
@@ -225,26 +225,33 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
                   aria-pressed={isSelected}
                   aria-label={`${formatDay(key)}${items.length ? `, 마감 공고 ${items.length}개` : ""}${hasTodo ? ", 할 일 있음" : ""}`}
                   className={cn(
-                    "relative flex h-10 items-center justify-center rounded-xl bg-muted text-xs tabular-nums transition-colors hover:bg-accent",
-                    isToday && "font-bold",
-                    isToday && !isSelected && "ring-1 ring-foreground",
-                    isSelected && "bg-primary font-bold text-primary-foreground hover:bg-primary",
+                    "group relative flex h-11 items-center justify-center text-[13px] font-medium tabular-nums",
+                    i % 7 === 0 && !isSelected && !isToday && "text-destructive",
                   )}
                 >
+                  {/* 날짜 숫자: 고른 날 파란 동그라미, 오늘 파란 테두리 (DESIGN v3) */}
+                  <span
+                    className={cn(
+                      "flex size-8 items-center justify-center rounded-full transition-colors group-hover:bg-muted",
+                      isToday && !isSelected && "font-bold text-primary ring-[1.5px] ring-primary ring-inset",
+                      isSelected && "bg-primary font-bold text-primary-foreground group-hover:bg-primary",
+                    )}
+                  >
+                    {Number(key.slice(8))}
+                  </span>
                   {(items.length > 0 || hasTodo) && (
-                    <span className="absolute top-1 flex gap-0.5" aria-hidden>
+                    <span className="absolute bottom-0 flex gap-0.5" aria-hidden>
                       {items.length > 0 && (
                         <span
                           className={cn(
                             "size-1 rounded-full",
-                            items.some((p) => isUrgent(p, today)) ? "bg-destructive" : isSelected ? "bg-primary-foreground" : "bg-foreground/50",
+                            items.some((p) => isUrgent(p, today)) ? "bg-destructive" : "bg-foreground/40",
                           )}
                         />
                       )}
                       {hasTodo && <span className="size-1 rounded-full bg-due-foreground" />}
                     </span>
                   )}
-                  {Number(key.slice(8))}
                 </button>
               );
             })}
@@ -301,7 +308,7 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
 
         <Card className="gap-3 px-3 md:px-6" aria-label="할 일">
           <PanelHead title="할 일" href={href("/app/todos")}>
-            {remaining > 0 && <span className="rounded-full bg-secondary px-2 text-xs font-medium tabular-nums">{remaining}</span>}
+            {remaining > 0 && <span className="rounded-xs bg-secondary px-1.5 text-xs font-medium tabular-nums">{remaining}</span>}
           </PanelHead>
           {shownTodos.length === 0 && allTodos.length > 0 ? (
             <div className="flex items-center gap-3 rounded-2xl bg-muted px-4 py-3">

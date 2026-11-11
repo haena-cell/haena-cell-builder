@@ -194,7 +194,7 @@ export function PostingDetail({ initialPosting, nowIso }: { initialPosting: Post
                         size="sm"
                         role="radio"
                         aria-checked={doneSteps === i}
-                        className={cn(doneSteps === i && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
+                        className={cn(doneSteps === i && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
                         onClick={() => (doneSteps === i ? setChoosingStep(false) : moveToStep(i))}
                       >
                         {name}

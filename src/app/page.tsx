@@ -37,7 +37,7 @@ const exampleSteps = [
 // 회색 바탕 위 둥근 흰 판 하나 = 섹션 하나 (DESIGN.md 6)
 function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn("rounded-[28px] bg-card px-5 py-12 md:rounded-[36px] md:px-12 md:py-20", className)}>
+    <section className={cn("rounded-2xl bg-card px-5 py-12 md:px-12 md:py-20", className)}>
       {children}
     </section>
   );
@@ -109,7 +109,7 @@ export default function Home() {
             <Reveal>
               <p className="mb-3 text-xs font-semibold text-muted-foreground">예시 화면</p>
               <div className="rounded-3xl bg-background p-3 md:p-4">
-                <Card className="flex-row gap-0 rounded-[20px] py-0 md:rounded-[20px]">
+                <Card className="flex-row gap-0 rounded-xl py-0">
                   <div className="flex w-16 shrink-0 flex-col items-center justify-center border-r border-border py-4">
                     <span className="text-[11px] text-muted-foreground">11월</span>
                     <span className="text-[22px] leading-7 font-semibold tabular-nums">05</span>

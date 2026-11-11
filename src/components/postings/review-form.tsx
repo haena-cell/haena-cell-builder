@@ -55,7 +55,7 @@ function Field({
       <div className="flex items-center justify-between gap-2 px-1">
         <Label htmlFor={htmlFor} className="text-sm font-medium">{label}</Label>
         {unsure && (
-          <span className="flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-[11px] font-medium text-warning-foreground">
+          <span className="flex items-center gap-1 rounded-xs bg-card px-1.5 py-0.5 text-[11px] font-medium text-warning-foreground">
             <AlertCircle className="size-3" />
             확인해 주세요
           </span>
@@ -248,7 +248,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
                         size="sm"
                         role="radio"
                         aria-checked={jobTitle === name}
-                        className={cn("h-auto whitespace-normal py-1.5 text-left", jobTitle === name && "border-primary bg-primary text-primary-foreground hover:bg-primary/85 hover:text-primary-foreground")}
+                        className={cn("h-auto whitespace-normal py-1.5 text-left", jobTitle === name && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
                         onClick={() => { setJobTitle(name); touch("jobTitle"); }}
                       >
                         {name}
@@ -343,7 +343,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
       )}
 
       {/* 화면 아래 떠 있는 저장 바 */}
-      <div className="sticky bottom-4 z-10 mx-auto flex w-full max-w-md gap-2 rounded-full bg-card p-1.5 shadow-soft ring-1 ring-border">
+      <div className="sticky bottom-4 z-10 mx-auto flex w-full max-w-md gap-2 rounded-2xl bg-card p-2 shadow-soft ring-1 ring-border">
         <Button type="button" variant="ghost" size="lg" className="h-11 px-4" asChild>
           <Link href="/app/new">처음부터</Link>
         </Button>
@@ -364,7 +364,7 @@ export function ReviewForm() {
     setDraft(loadDraft());
   }, []);
 
-  if (draft === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-card md:rounded-[28px]" aria-label="불러오는 중" />;
+  if (draft === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="불러오는 중" />;
   if (draft === null) {
     return (
       <Card className="items-start px-6">

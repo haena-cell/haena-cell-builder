@@ -18,7 +18,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
   return (
     <DemoProvider>
       <div className="flex min-h-full flex-1 bg-background">
-        <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 px-4 py-6 lg:flex">
+        <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 border-r border-border-subtle bg-card px-4 py-6 lg:flex">
           <div className="flex items-center gap-2 px-4">
             <Link href="/">
               <BrandName />
@@ -46,7 +46,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex h-14 items-center justify-between bg-background/85 px-4 backdrop-blur lg:hidden">
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border-subtle bg-card/90 px-4 backdrop-blur lg:hidden">
             <div className="flex items-center gap-2">
               <Link href="/">
                 <BrandName size="sm" />

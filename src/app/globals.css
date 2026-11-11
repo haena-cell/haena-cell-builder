@@ -50,13 +50,19 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* 모서리 단계 (DESIGN.md v3): 배지 6 · 작은 버튼·칩 8 · 중간 버튼 10 · 버튼·입력칸 12 · 카드 16 */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 16px;
+  --radius-4xl: 16px;
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-border-subtle: var(--border-subtle);
+  --shadow-xs: var(--elevation-xs);
   /* 마스코트가 처음 나타날 때 한 번 폴짝 (D-54) */
   --animate-mascot-hop: mascot-hop 0.7s cubic-bezier(0.3, 0.7, 0.4, 1) 1;
   @keyframes mascot-hop {
@@ -67,50 +73,54 @@
 }
 
 :root {
-  /* 디자인 v2: 연회색 바탕 + 둥근 흰 판, 대표 색 검정 (DESIGN.md, D-21) */
-  --background: #F2F2F3;
-  --foreground: #141414;
+  /* 디자인 v3: 원티드 디자인 시스템(Montage) 규칙, 대표 색 파랑 (DESIGN.md v3, D-55) */
+  --background: #F7F7F8;
+  --foreground: #171719;
   --card: #FFFFFF;
-  --card-foreground: #141414;
+  --card-foreground: #171719;
   --popover: #FFFFFF;
-  --popover-foreground: #141414;
-  --primary: #141414;
+  --popover-foreground: #171719;
+  --primary: #0066FF;
+  --primary-hover: #005EEB;
   --primary-foreground: #FFFFFF;
+  --primary-soft: #EAF2FE;
   --secondary: #F4F4F5;
-  --secondary-foreground: #141414;
+  --secondary-foreground: #171719;
   --muted: #F4F4F5;
-  --muted-foreground: #8A8A8E;
-  --accent: #EDEDEF;
-  --accent-foreground: #141414;
-  --destructive: #D33A3A;
+  --muted-foreground: rgba(55, 56, 60, 0.61);
+  --accent: rgba(112, 115, 124, 0.12);
+  --accent-foreground: #171719;
+  --destructive: #FF4242;
   --destructive-foreground: #FFFFFF;
-  --destructive-soft: #FDECEC;
-  --warning: #FEF5D6;
-  --warning-foreground: #8A5A00;
-  --info: #E9F0FE;
-  --info-foreground: #2F64D0;
-  --success: #E5F6EC;
-  --success-foreground: #1E8049;
-  --due: #FDF0E2;
-  --due-foreground: #B95E10;
-  --border: #ECECEE;
-  --input: #E4E4E7;
-  --ring: #A1A1A6;
-  --elevation: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --destructive-soft: rgba(255, 66, 66, 0.08);
+  --warning: rgba(255, 146, 0, 0.1);
+  --warning-foreground: #D97A00;
+  --info: #EAF2FE;
+  --info-foreground: #0066FF;
+  --success: rgba(0, 191, 64, 0.08);
+  --success-foreground: #00A13A;
+  --due: rgba(255, 146, 0, 0.1);
+  --due-foreground: #D97A00;
+  --border: rgba(112, 115, 124, 0.16);
+  --border-subtle: rgba(112, 115, 124, 0.08);
+  --input: rgba(112, 115, 124, 0.22);
+  --ring: #0066FF;
+  --elevation: 0 4px 6px -2px rgba(23, 23, 23, 0.07), 0 10px 15px -3px rgba(23, 23, 23, 0.07);
+  --elevation-xs: 0 1px 2px -1px rgba(23, 23, 23, 0.1);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.875rem;
-  --sidebar: #F2F2F3;
-  --sidebar-foreground: #141414;
-  --sidebar-primary: #141414;
+  --radius: 0.75rem;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #171719;
+  --sidebar-primary: #0066FF;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #FFFFFF;
-  --sidebar-accent-foreground: #141414;
-  --sidebar-border: #ECECEE;
-  --sidebar-ring: #A1A1A6;
+  --sidebar-accent: #F4F4F5;
+  --sidebar-accent-foreground: #0066FF;
+  --sidebar-border: rgba(112, 115, 124, 0.08);
+  --sidebar-ring: #0066FF;
 }
 
 .dark {

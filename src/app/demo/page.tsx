@@ -20,7 +20,7 @@ export default function DemoHomePage() {
   return (
     <PageBody>
       <PageTitle title="홈" description="마감이 가까운 공고와 남은 할 일이에요." />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card md:rounded-[28px]" aria-label="불러오는 중" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="불러오는 중" />}>
         <Home />
       </Suspense>
     </PageBody>
