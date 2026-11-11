@@ -67,14 +67,15 @@ function DueDate({
   );
 }
 
-// 마감 날짜 칩. 안 끝낸 일이 하루 안으로 남았거나 지났으면 빨갛게.
+// 마감 날짜 칩. 3일 이내(D-3 ~ D-day)는 빨강, 지났거나 끝낸 일은 회색
 export function DueChip({ value, done, today, onClick }: { value: string; done: boolean; today: string; onClick?: () => void }) {
   const days = daysToDate(value, today);
   const className = cn(
     "ml-auto shrink-0 rounded-xs bg-due px-2 py-0.5 text-right text-xs font-medium text-due-foreground tabular-nums",
     onClick && "hover:opacity-80",
-    !done && days <= 1 && "bg-destructive-soft text-destructive",
-    done && "bg-secondary text-muted-foreground",
+    // 색 기준 (2026-11-12, 공고 마감과 같게): D-3 ~ D-day 빨강, 지난 날짜·끝낸 일은 회색, 그 밖은 노랑
+    !done && days >= 0 && days <= 3 && "bg-destructive-soft text-destructive",
+    (done || days < 0) && "bg-secondary text-muted-foreground",
   );
   // "D-5 | 11/26 (화)" 의 가운데 막대는 글자색 25% · 2px, 양옆 8px 띄움 해서 날짜 정보와 구분한다 (2026-11-12 사용자 요청)
   const [left, date] = formatDueDate(value, today).split(" | ");
