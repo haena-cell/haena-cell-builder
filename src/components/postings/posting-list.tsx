@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowUpDown, ChevronDown, Flag, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2, X } from "lucide-react";
+import { ArrowUpDown, CalendarRange, ChevronDown, Flag, GripVertical, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { pushUndo } from "@/lib/undo";
 import { Button } from "@/components/ui/button";
@@ -271,7 +271,7 @@ export function PostingList({
   const searchParams = useSearchParams();
   const href = useAppHref();
   const listHref = href("/app/postings");
-  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePostingFull, updatePostingMeta } = usePostingActions();
+  const { deletePosting, setCurrentStep, setStepCompleted: setStepCompletedAction, updatePostingFull, updatePostingMeta, setPeriod } = usePostingActions();
   const [postings, setPostings] = useState(initialPostings);
   // 처음 그릴 때는 서버가 센 D-day, 그 뒤에는 브라우저에서 센다
   const [now, setNow] = useState<Date | null>(null);
@@ -286,6 +286,10 @@ export function PostingList({
   const [sort, setSort] = useState<Sort>("status");
   // 접어 둔 시기 (2026-11-13 사용자 요청: 시기별로 접었다 펴기). 이 브라우저에 기억
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // 시기 옮기기 (D-74): 손잡이로 끌어 다른 시기 띠에 놓거나 [⋯ → 시기 바꾸기]. 옮기기 전에 한 번 묻는다
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
+  const [moving, setMoving] = useState<{ posting: Posting; to: string | null; pick: boolean } | null>(null);
   // 여러 공고 고르기 (D-66): 드래그·체크로 고른 공고 id
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState(false);
@@ -522,7 +526,7 @@ export function PostingList({
   function onRowPointerDown(e: React.PointerEvent, index: number) {
     if (e.pointerType !== "mouse" || e.button !== 0) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return; // 컴퓨터 화면만
-    if ((e.target as HTMLElement).closest("button, input, [role=menuitem]")) return;
+    if ((e.target as HTMLElement).closest("button, input, [role=menuitem], [data-drag-handle]")) return;
     const keep = e.metaKey || e.ctrlKey || e.shiftKey;
     drag.current = { start: index, base: keep ? new Set(selected) : new Set(), active: false };
   }
@@ -540,6 +544,32 @@ export function PostingList({
   }
 
   // ── 고른 공고 한꺼번에 바꾸기 (D-66) ───────────────────────
+  // ── 시기 옮기기 (D-74) ─────────────────────────────
+  const thisYear = Number(kstDateKey(new Date()).slice(0, 4));
+  const minYear = Math.min(thisYear - 1, ...postings.map((p) => Number(periodOf(p)?.slice(0, 4) ?? thisYear)));
+  const periodOptions: string[] = [];
+  for (let y = thisYear + 1; y >= minYear; y--) periodOptions.push(`${y} 하`, `${y} 상`);
+
+  async function movePeriod(posting: Posting, to: string | null, record = true) {
+    const before = posting.period ?? null;
+    replace(posting.id, (p) => ({ ...p, period: to }));
+    const result = await setPeriod(posting.id, to);
+    if (!result.ok) {
+      replace(posting.id, (p) => ({ ...p, period: before }));
+      return toast.error(result.message);
+    }
+    toast(`${posting.company} → ${to ? periodTitle(to) : "마감일 기준 시기"}`);
+    if (record) pushUndo(`${posting.company} 시기 옮기기`, () => movePeriod({ ...posting, period: to }, before, false));
+  }
+
+  function dropOn(key: string) {
+    const posting = postings.find((p) => p.id === dragId);
+    setDragId(null);
+    setDropKey(null);
+    if (!posting || !key || periodKey(posting) === key) return;
+    setMoving({ posting, to: key, pick: false });
+  }
+
   async function bulkMeta(meta: { priority?: Priority; employmentType?: string | null }, label: string) {
     const targets = selectedRows;
     const field = meta.priority !== undefined ? "priority" : "employmentType";
@@ -798,7 +828,18 @@ export function PostingList({
             return (
               <Fragment key={posting.id}>
               {band && (
-                <li className={cn("bg-muted", index > 0 && "mt-4")}>
+                <li
+                  className={cn("bg-muted transition-colors", index > 0 && "mt-4", dragId && dropKey === key && key && "bg-accent ring-2 ring-foreground/40 ring-inset")}
+                  onDragOver={(e) => {
+                    if (!dragId || !key) return;
+                    e.preventDefault();
+                    setDropKey(key);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    dropOn(key);
+                  }}
+                >
                   <button
                     type="button"
                     aria-expanded={!folded}
@@ -817,13 +858,44 @@ export function PostingList({
                 key={posting.id}
                 onPointerDown={(e) => onRowPointerDown(e, vIndex)}
                 onPointerEnter={() => onRowPointerEnter(vIndex)}
+                onDragOver={(e) => {
+                  if (!dragId || !key) return;
+                  e.preventDefault();
+                  setDropKey(key);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  dropOn(key);
+                }}
                 className={cn(
                   "group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:pl-12",
                   TABLE_COLUMNS,
                   posting.id === highlightId && "bg-accent",
                   isSelected && "bg-primary-soft hover:bg-primary-soft",
+                  posting.id === dragId && "opacity-40",
                 )}
               >
+                {/* 시기 옮기기 손잡이 (D-74): 잡고 다른 시기 띠로 끌어 놓는다 */}
+                {grouped && (
+                  <span
+                    data-drag-handle
+                    draggable
+                    aria-hidden
+                    title="끌어서 다른 시기로 옮기기"
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", posting.id);
+                      setDragId(posting.id);
+                    }}
+                    onDragEnd={() => {
+                      setDragId(null);
+                      setDropKey(null);
+                    }}
+                    className="absolute top-1/2 left-0.5 z-20 hidden -translate-y-1/2 cursor-grab text-muted-foreground opacity-0 group-hover:opacity-100 active:cursor-grabbing lg:block"
+                  >
+                    <GripVertical className="size-4" />
+                  </span>
+                )}
                 {/* 줄 고르기 체크 (컴퓨터 화면, 마우스를 올리거나 고른 게 있으면 보임) (D-66) */}
                 <input
                   type="checkbox"
@@ -923,6 +995,10 @@ export function PostingList({
                           <Pencil />
                           편집
                         </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setMoving({ posting, to: periodOf(posting), pick: true })}>
+                          <CalendarRange />
+                          시기 바꾸기
+                        </DropdownMenuItem>
                         <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(posting)}>
                           <Trash2 />
                           삭제
@@ -938,6 +1014,42 @@ export function PostingList({
           })}
         </ul>
       )}
+      {/* 끄는 동안 모든 시기를 놓을 칸으로 보여 준다 — 화면에 띠가 없는 시기로도 옮길 수 있게 (D-74) */}
+      {dragId && (
+        <div
+          role="group"
+          aria-label="옮길 시기"
+          className="fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit max-w-[calc(100vw-2rem)] flex-wrap items-center justify-center gap-2 rounded-lg border bg-background px-4 py-3 shadow-lg"
+        >
+          <span className="mr-1 text-xs text-muted-foreground">여기에 놓아 시기 옮기기</span>
+          {periodOptions.map((option) => {
+            const current = postings.find((p) => p.id === dragId);
+            const same = current ? periodKey(current) === option : false;
+            return (
+              <span
+                key={option}
+                onDragOver={(e) => {
+                  if (same) return;
+                  e.preventDefault();
+                  setDropKey(`panel:${option}`);
+                }}
+                onDragLeave={() => setDropKey((k) => (k === `panel:${option}` ? null : k))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  dropOn(option);
+                }}
+                className={cn(
+                  "rounded-md border px-3 py-1.5 text-sm transition-colors",
+                  same ? "border-transparent text-muted-foreground/50" : "text-foreground",
+                  dropKey === `panel:${option}` && "border-foreground bg-foreground text-background",
+                )}
+              >
+                {periodTitle(option)}
+              </span>
+            );
+          })}
+        </div>
+      )}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
@@ -947,6 +1059,47 @@ export function PostingList({
           {editing && <PostingEditForm key={editing.id} posting={editing} onSave={saveEdit} onCancel={() => setEditing(null)} />}
         </DialogContent>
       </Dialog>
+
+      {/* 시기 옮기기 확인 (D-74) */}
+      <AlertDialog open={moving !== null} onOpenChange={(open) => !open && setMoving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {moving && (moving.pick ? `${moving.posting.company} 시기 바꾸기` : `${moving.posting.company}을(를) ${moving.to ? periodTitle(moving.to) : ""}로 옮길까요?`)}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {moving && `지금: ${periodOf(moving.posting) ? periodTitle(periodOf(moving.posting)!) : "시기 없음"}. 마감일은 그대로이고, 목록에서 보이는 시기만 바뀌어요.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {moving?.pick && (
+            <select
+              aria-label="옮길 시기"
+              value={moving.to ?? ""}
+              onChange={(e) => setMoving({ ...moving, to: e.target.value || null })}
+              className="h-10 rounded-md border border-input bg-card px-3 text-sm"
+            >
+              <option value="">마감일 기준으로 (자동)</option>
+              {periodOptions.map((o) => (
+                <option key={o} value={o}>
+                  {periodTitle(o)}
+                </option>
+              ))}
+            </select>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!moving) return;
+                movePeriod(moving.posting, moving.to);
+                setMoving(null);
+              }}
+            >
+              옮기기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={bulkDeleting} onOpenChange={(open) => !open && !removing && setBulkDeleting(false)}>
         <AlertDialogContent>

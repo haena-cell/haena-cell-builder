@@ -40,6 +40,7 @@ export type Posting = {
   prepItems: PrepItem[];
   isSample: boolean;
   memo?: string | null; // 직무 설명·메모 (2026-11-13)
+  period?: string | null; // 시기 "2026 상" — 비어 있으면 마감일로 계산 (D-74)
   priority: Priority;
 };
 
@@ -161,8 +162,9 @@ export function companyKey(name: string) {
     .toLowerCase();
 }
 
-// 시기: 마감일(한국 날짜) 1~6월 "상", 7~12월 "하". 마감일이 없으면 null
-export function periodOf(p: Pick<Posting, "deadlineKind" | "deadlineAt">) {
+// 시기: 직접 정한 시기, 없으면 마감일(한국 날짜) 1~6월 "상", 7~12월 "하". 둘 다 없으면 null
+export function periodOf(p: Pick<Posting, "deadlineKind" | "deadlineAt" | "period">) {
+  if (p.period && /^\d{4} (상|하)$/.test(p.period)) return p.period; // 직접 정한 시기가 먼저 (D-74)
   if (p.deadlineKind !== "date" || !p.deadlineAt) return null;
   const key = kstDateKey(new Date(p.deadlineAt));
   return `${key.slice(0, 4)} ${Number(key.slice(5, 7)) <= 6 ? "상" : "하"}`;

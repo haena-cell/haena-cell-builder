@@ -44,6 +44,7 @@ function toPosting(row: Row): Posting {
     })),
     isSample: row.is_sample,
     memo: row.memo,
+    period: row.period,
     priority: row.priority as Posting["priority"],
   };
 }

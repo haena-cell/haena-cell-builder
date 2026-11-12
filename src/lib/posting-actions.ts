@@ -404,3 +404,11 @@ export async function updateMemo(id: string, memo: string): Promise<ActionResult
   const { data, error } = await supabase.from("postings").update({ memo: text }).eq("id", id).select("id");
   return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
+
+// 공고 시기 직접 정하기 (D-74): "2026 상" 처럼. null 이면 마감일로 계산
+export async function setPeriod(id: string, period: string | null): Promise<ActionResult> {
+  if (period !== null && !/^\d{4} (상|하)$/.test(period)) return { ok: false, message: FAILED };
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("postings").update({ period }).eq("id", id).select("id");
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
+}
