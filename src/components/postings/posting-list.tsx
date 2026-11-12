@@ -115,15 +115,46 @@ function FilterMenu({
   onChange: (next: string[]) => void;
 }) {
   const active = selected.length > 0;
+  // 고른 옵션 이름 (2개까지, 더 있으면 "외 n") (2026-11-12 사용자 요청)
+  const picked = options.filter((o) => selected.includes(o.value)).map((o) => o.label);
+  const summary = picked.length > 2 ? `${picked.slice(0, 2).join(", ")} 외 ${picked.length - 2}` : picked.join(", ");
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(active && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background aria-expanded:bg-primary aria-expanded:text-primary-foreground")}>
-          {label}
-          {active && <span className="tabular-nums">{selected.length}</span>}
-          <ChevronDown data-icon="inline-end" />
-        </Button>
-      </DropdownMenuTrigger>
+      {/* 안 골랐을 때는 검정 글자, 고르면 대표 색 + 고른 옵션 + [×] */}
+      <div
+        className={cn(
+          "inline-flex h-8 items-center rounded-sm border transition-colors",
+          active ? "border-primary bg-primary-soft text-primary-strong" : "border-input bg-card text-foreground",
+        )}
+      >
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-full max-w-64 items-center gap-1 rounded-sm text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              active ? "pr-1 pl-3" : "px-3 hover:bg-muted",
+            )}
+          >
+            <span className="shrink-0">
+              {label}
+              {active && ":"}
+            </span>
+            {active && <span className="truncate font-semibold">{summary}</span>}
+            <ChevronDown className="size-3.5 shrink-0 opacity-70" />
+          </button>
+        </DropdownMenuTrigger>
+        {active && (
+          <button
+            type="button"
+            aria-label={`${label} 걸러 보기 지우기`}
+            title={`${label} 걸러 보기 지우기`}
+            onClick={() => onChange([])}
+            className="mr-1 inline-flex size-6 items-center justify-center rounded-xs hover:bg-primary/15"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
       <DropdownMenuContent align="start" className="w-44">
         <DropdownMenuLabel>{label}로 걸러 보기</DropdownMenuLabel>
         {options.map((o) => (
@@ -659,7 +690,7 @@ export function PostingList({
       )}
 
       {/* 표 머리 (넓은 화면) */}
-      <div className={cn("relative hidden items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid", TABLE_COLUMNS)}>
+      <div className={cn("relative hidden items-center gap-3 border-y border-border bg-muted/60 py-2.5 pr-6 pl-12 text-xs font-medium text-muted-foreground lg:grid", TABLE_COLUMNS)}>
         {/* 보이는 줄 전체 고르기 (D-66) */}
         {rows.length > 0 && (
           <input
@@ -667,7 +698,7 @@ export function PostingList({
             aria-label="보이는 공고 모두 고르기"
             checked={allSelected}
             onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((p) => p.id)))}
-            className="absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 accent-primary"
+            className="absolute top-1/2 left-5 size-4 -translate-y-1/2 accent-primary"
           />
         )}
         <span>기업 · 직무</span>
@@ -721,7 +752,7 @@ export function PostingList({
                 onPointerDown={(e) => onRowPointerDown(e, index)}
                 onPointerEnter={() => onRowPointerEnter(index)}
                 className={cn(
-                  "group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6",
+                  "group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:pl-12",
                   TABLE_COLUMNS,
                   posting.id === highlightId && "bg-accent",
                   isSelected && "bg-primary-soft hover:bg-primary-soft",
@@ -734,7 +765,7 @@ export function PostingList({
                   checked={isSelected}
                   onChange={() => toggleSelected(posting.id)}
                   className={cn(
-                    "absolute top-1/2 left-1.5 z-20 hidden size-3.5 -translate-y-1/2 accent-primary lg:block",
+                    "absolute top-1/2 left-5 z-20 hidden size-4 -translate-y-1/2 accent-primary lg:block",
                     hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
                   )}
                 />
