@@ -29,7 +29,10 @@ const SYSTEM = `너는 한국 채용공고에서 정해진 항목만 뽑아 정�
 - 공고에 적힌 내용만 쓴다. 적혀 있지 않으면 null(목록은 빈 배열), 추측하지 않는다.
 - company: 채용하는 회사 이름. jobTitle: 모집 직무(공고 제목의 꾸밈말은 뺀다).
 - jobOptions: 한 공고에서 여러 직무를 모집하면 지원자가 고를 직무 이름을 모두(경력·인턴·레벨이 다르면 따로). 직무가 하나면 빈 배열.
-- 마감: 날짜가 있으면 deadlineKind "date"와 deadlineDate. "상시 채용"은 "rolling", "채용 시 마감"은 "until_filled", 알 수 없으면 "unknown". 기간이 있으면 끝 날짜. 연도가 없으면 unknown.
+- 마감: 날짜가 있으면 deadlineKind "date"와 deadlineDate. "상시 채용"은 "rolling", "채용 시 마감"은 "until_filled", 알 수 없으면 "unknown". 기간이 있으면 끝 날짜.
+  · 연도 없이 "11월 13일"처럼만 적혀 있으면 오늘(아래에 알려 줌) 기준으로 올해로 본다. 그 날짜가 오늘보다 한 달 넘게 지났으면 내년으로 본다.
+  · "23시 59분", "오후 6시"처럼 시각이 있으면 deadlineTime 에 24시간 HH:MM 으로("오후 6시" → "18:00").
+- 이미지 공고(카드뉴스·SNS 캡처): 큰 제목, "인턴"·"정규직" 같은 태그, "마감기한·주요업무·자격요건" 같은 표 항목을 모두 읽는다. 큰 제목이 "회사명 + 직무"면 회사명과 직무로 나눈다(예: "조구만 스튜디오 콘텐츠팀 인턴" → company "조구만 스튜디오", jobTitle "콘텐츠팀 인턴"). 공고를 올린 채널·매체 로고(예: 채용 소개 계정)는 회사명이 아니다. 태그·제목의 "인턴"은 employmentType 에도 쓴다.
 - employmentType: 정규직·계약직·인턴·파견·프리랜서·아르바이트 중 해당하는 것(여러 개면 쉼표).
 - location: 근무지(주소나 지역, 지하철역 안내가 있으면 괄호로).
 - requiredDocs: 제출 서류 이름만(예: 이력서, 자기소개서, 포트폴리오).
@@ -64,7 +67,7 @@ export async function aiExtract(source: AiSource): Promise<AiPosting | null> {
   const text = source.text ? stripContacts(source.text).slice(0, MAX_TEXT) : "";
   content.push({
     type: "text",
-    text: `${text ? `<공고>\n${text}\n</공고>\n\n` : ""}위 채용공고${content.length > 1 ? "(이미지 포함)" : ""}에서 항목을 뽑아 줘.`,
+    text: `오늘: ${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date())} (한국 날짜)\n\n${text ? `<공고>\n${text}\n</공고>\n\n` : ""}위 채용공고${content.length > 1 ? "(이미지 포함)" : ""}에서 항목을 뽑아 줘.`,
   });
   if (!text && content.length === 1) return null;
 
@@ -75,7 +78,8 @@ export async function aiExtract(source: AiSource): Promise<AiPosting | null> {
         max_tokens: 4000,
         // 안전 분류기가 거절하면 서버가 다른 모델로 다시 시도 (Haiku 는 지원하지 않는다)
         ...(MODEL.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
-        output_config: { effort: "low", format: betaZodOutputFormat(AiPosting) },
+        // 캡처는 글자를 그림에서 읽어야 해서 조금 더 꼼꼼히(medium), 글·링크는 빠르게(low)
+        output_config: { effort: source.imageDataUrl ? "medium" : "low", format: betaZodOutputFormat(AiPosting) },
         system: SYSTEM,
         messages: [{ role: "user", content }],
       },

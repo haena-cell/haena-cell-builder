@@ -14,7 +14,7 @@ import { DocPicker, newStepItem, StepEditor, type StepItem } from "@/components/
 import { Segmented } from "@/components/postings/segmented";
 import { cn } from "@/lib/utils";
 import type { DeadlineKind } from "@/lib/postings";
-import { createPosting, findSimilarPostings, type PostingSummary } from "@/lib/posting-actions";
+import { createPosting, findSameCompanyJob, findSimilarPostings, updateFromNewRead, type PostingSummary } from "@/lib/posting-actions";
 import { clearDraft, clearQueue, loadDraft, loadQueue, updateQueue, type Draft, type DraftQueue } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
@@ -70,7 +70,7 @@ function Field({
 // 판 하나: 제목 + 내용 (DESIGN.md 4 "판")
 function Panel({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Card className="gap-5 px-4 md:px-6">
+    <Card className="min-w-0 gap-5 px-4 md:px-6">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold tracking-tight">{title}</h2>
         {aside}
@@ -111,6 +111,17 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
   const similarKey = `${company.trim()}|${jobTitle.trim()}|${deadlineKind}|${deadlineKind === "date" ? date : ""}`;
   const showSimilar = similar !== null && similar.key === similarKey;
   const similarRef = useRef<HTMLDivElement>(null);
+  // 읽은 직후 같은 공고 확인 (2026-11-12 사용자 요청): 기업명·직무가 같은 저장 공고가 있으면 업데이트할지 새로 저장할지 먼저 고른다
+  const [same, setSame] = useState<(PostingSummary & { deadlineAt: string | null })[]>([]);
+  const [choice, setChoice] = useState<{ mode: "update"; id: string } | { mode: "new" } | null>(null);
+  const sameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let alive = true;
+    findSameCompanyJob(p.company, p.jobTitle).then((items) => alive && setSame(items));
+    return () => {
+      alive = false;
+    };
+  }, [p.company, p.jobTitle]);
 
   // 경고가 뜨면 보이는 곳으로 옮긴다 (휴대폰에서는 폼 아래쪽이라 안 보일 수 있다)
   useEffect(() => {
@@ -128,13 +139,31 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
     if (deadlineKind === "date" && !date) return setError("마감 날짜를 골라 주세요.");
     if (steps.length === 0) return setError("전형 단계를 하나 이상 넣어 주세요.");
 
+    if (same.length > 0 && !choice) {
+      sameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return setError("이미 저장한 공고와 같아 보여요. 위에서 기존 공고를 업데이트할지, 새 공고로 저장할지 골라 주세요.");
+    }
     setError(null);
     setExistingId(null);
     // 시각이 없으면 그날 23:59 (한국 시간)로 저장하고 화면에는 날짜만 보여 준다
     const deadlineAt = deadlineKind === "date" ? new Date(`${date}T${time || "23:59"}:00+09:00`).toISOString() : null;
     startSaving(async () => {
-      // 처음 누르면 비슷한 공고를 찾아 경고만 하고, 한 번 더 누르면 그대로 저장한다 (T-08)
-      if (!showSimilar) {
+      // 기존 공고 업데이트: 진행 단계·준비 항목은 그대로 두고 정보만 바꾼다
+      if (choice?.mode === "update") {
+        const result = await updateFromNewRead(
+          choice.id,
+          { company, jobTitle, deadlineKind, deadlineAt, deadlineTimeKnown: deadlineKind === "date" && time !== "", location, employmentType, companySize, requiredDocs: docs },
+          steps.map((step) => step.name),
+        );
+        if (!result.ok) return setError(result.message);
+        toast("기존 공고를 업데이트했어요");
+        if (queue) return queue.next(choice.id);
+        clearDraft();
+        router.push(`/app/postings/${choice.id}`);
+        return;
+      }
+      // 처음 누르면 비슷한 공고를 찾아 경고만 하고, 한 번 더 누르면 그대로 저장한다 (T-08). 위에서 "새로 저장"을 골랐으면 묻지 않는다
+      if (!showSimilar && choice?.mode !== "new") {
         const items = await findSimilarPostings({ company, jobTitle, deadlineKind, deadlineAt });
         if (items.length > 0) return setSimilar({ key: similarKey, items });
       }
@@ -195,6 +224,52 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
           <p className="truncate text-xl font-bold tracking-tight md:text-2xl">{company || "기업명 없음"}</p>
           <p className="truncate text-sm text-muted-foreground">{jobTitle || "직무 없음"}</p>
         </div>
+        {same.length > 0 && (
+          <div ref={sameRef} className="flex flex-col gap-3 rounded-2xl bg-warning px-4 py-3 text-sm text-warning-foreground" role="alert">
+            <div>
+              <p className="font-semibold">이미 저장한 공고와 같아 보여요</p>
+              <p className="text-xs">기업명·직무가 같은 공고가 있어요. 어떻게 저장할지 골라 주세요.</p>
+            </div>
+            <div className="flex flex-col gap-2" role="radiogroup" aria-label="저장 방법">
+              {same.map((item) => {
+                const on = choice?.mode === "update" && choice.id === item.id;
+                const due = item.deadlineAt ? toKstParts(item.deadlineAt, false).date.slice(5).replace("-", "/") : null;
+                return (
+                  <div key={item.id} className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      role="radio"
+                      aria-checked={on}
+                      className={cn("h-auto py-1.5", on && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
+                      onClick={() => { setError(null); setChoice({ mode: "update", id: item.id }); }}
+                    >
+                      기존 공고 업데이트{same.length > 1 && ` · ${item.company}${due ? ` (${due} 마감)` : ""}`}
+                    </Button>
+                    {same.length === 1 && (
+                      <Link href={`/app/postings/${item.id}`} target="_blank" className="text-xs underline underline-offset-2">
+                        {item.company} · {item.jobTitle}{due && ` (${due} 마감)`} 보기
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                role="radio"
+                aria-checked={choice?.mode === "new"}
+                className={cn("h-auto self-start py-1.5", choice?.mode === "new" && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
+                onClick={() => { setError(null); setChoice({ mode: "new" }); }}
+              >
+                새 공고로 저장
+              </Button>
+            </div>
+            {choice?.mode === "update" && <p className="text-xs">기존 공고의 정보를 이번에 읽은 내용으로 바꿔요. 진행 단계·준비 항목·할 일은 그대로예요.</p>}
+          </div>
+        )}
         {draft.hint && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-primary-soft px-4 py-3 text-sm text-primary-strong" role="status">
             <p className="min-w-0 flex-1">{draft.hint}</p>
@@ -238,8 +313,8 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
         </div>
       </Card>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div className="flex min-w-0 flex-col gap-4">
+      {/* 넓은 화면: 기본 정보 | 근무 조건, 제출 서류 | 전형 절차 를 같은 줄에 (2026-11-12 사용자 요청) */}
+      <div className="grid gap-4 lg:grid-cols-2">
           <Panel title="기본 정보">
             <Field label="기업명" htmlFor="company" unsure={isUnsure("company")}>
               <Input id="company" value={company} maxLength={100}
@@ -305,9 +380,7 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
               </Field>
             </div>
           </Panel>
-        </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
           <Panel title="제출 서류" aside={<span className="text-xs text-muted-foreground tabular-nums">{docs.length}개 선택</span>}>
             <Field label="눌러서 고르기" unsure={isUnsure("requiredDocs")}>
               <DocPicker value={docs} onChange={(next) => { setDocs(next); touch("requiredDocs"); }} />
@@ -322,7 +395,6 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
               <StepEditor items={steps} onChange={(next) => { setSteps(next); touch("steps"); }} />
             </Field>
           </Panel>
-        </div>
       </div>
 
       {error && (
@@ -366,7 +438,9 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
         <Button type="submit" size="lg" className="h-11 flex-1" disabled={saving}>
           {saving
             ? "저장 중…"
-            : showSimilar
+            : choice?.mode === "update"
+              ? "기존 공고 업데이트"
+              : showSimilar
               ? "그래도 저장"
               : queue && queue.position < queue.total
                 ? "저장하고 다음 공고"

@@ -368,3 +368,31 @@ export async function deleteSubtask(subtaskId: string): Promise<ActionResult> {
   const { data, error } = await supabase.from("prep_subtasks").delete().eq("id", subtaskId).select("id");
   return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." });
 }
+
+// 읽은 직후 같은 공고 찾기 (2026-11-12 사용자 요청): 기업명 + 직무가 같은 내 공고. 마감일이 달라도(재공고) 알려 준다
+export async function findSameCompanyJob(company: string, jobTitle: string): Promise<(PostingSummary & { deadlineAt: string | null })[]> {
+  const c = company.trim();
+  const j = jobTitle.trim();
+  if (!c || !j) return [];
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase.from("postings").select("id, company, job_title, deadline_at").eq("company", c).eq("job_title", j).limit(5);
+  return (data ?? []).map((p) => ({ id: p.id, company: p.company, jobTitle: p.job_title, deadlineAt: p.deadline_at }));
+}
+
+// 기존 공고를 새로 읽은 내용으로 업데이트. 이름이 같은 단계는 그대로 두어 진행 상태를 지킨다. 준비 항목·할 일은 그대로
+export async function updateFromNewRead(
+  id: string,
+  fields: PostingFields & { requiredDocs: string[] },
+  stepNames: string[],
+): Promise<ActionResult<{ steps: PostingStep[] }>> {
+  const supabase = await createSupabaseServer();
+  const { data: rows, error } = await supabase.from("posting_steps").select("id, name").eq("posting_id", id).order("position");
+  if (error || !rows) return { ok: false, message: FAILED };
+  const norm = (s: string) => s.replace(/\s+/g, "");
+  const pool = [...rows];
+  const items = stepNames.map((name) => {
+    const k = pool.findIndex((r) => norm(r.name) === norm(name));
+    return k >= 0 ? { id: pool.splice(k, 1)[0].id, name } : { id: crypto.randomUUID(), name };
+  });
+  return updatePostingFull(id, fields, items);
+}
