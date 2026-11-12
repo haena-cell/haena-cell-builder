@@ -296,7 +296,13 @@ export function NewPostingForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" className="h-12 w-full text-base" disabled={loading || !canSubmit}>
+        {/* 평소엔 검정, 마우스를 올렸을 때만 주황 (2026-11-12 사용자 요청) */}
+        <Button
+          type="submit"
+          size="lg"
+          className="h-12 w-full bg-foreground text-base text-background hover:bg-primary hover:text-primary-foreground"
+          disabled={loading || !canSubmit}
+        >
           {loading ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
           {loading ? "정리하는 중…" : "정리하기"}
         </Button>
