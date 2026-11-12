@@ -88,6 +88,7 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "deadlineLate", label: "마감 늦은순" },
 ];
 const SORT_KEY = "hurdle.postings.sort";
+const COLLAPSED_KEY = "hurdle.postings.collapsed";
 const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
 // 마감 정렬에서 묶음 순서: 마감 전(남은 날 있음) → 상시·채용 시 마감 → 마감 지남
 const deadlineGroup = (days: number | null) => (days === null ? 1 : days < 0 ? 2 : 0);
@@ -281,6 +282,8 @@ export function PostingList({
   const [deleting, setDeleting] = useState<Posting | null>(null);
   const [removing, setRemoving] = useState(false);
   const [sort, setSort] = useState<Sort>("status");
+  // 접어 둔 시기 (2026-11-13 사용자 요청: 시기별로 접었다 펴기). 이 브라우저에 기억
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // 여러 공고 고르기 (D-66): 드래그·체크로 고른 공고 id
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState(false);
@@ -295,10 +298,26 @@ export function PostingList({
       const saved = localStorage.getItem(SORT_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다
       if (SORTS.some((o) => o.value === saved)) setSort(saved as Sort);
+      const folded = JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? "[]");
+      if (Array.isArray(folded)) setCollapsed(new Set(folded.filter((k): k is string => typeof k === "string")));
     } catch {
       // 저장소를 못 쓰면 기본 정렬
     }
   }, []);
+
+  function toggleCollapsed(key: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
+      } catch {
+        // 무시
+      }
+      return next;
+    });
+  }
 
   function changeSort(next: Sort) {
     setSort(next);
@@ -489,6 +508,9 @@ export function PostingList({
         return ka < kb ? 1 : -1;
       })
     : sortedRows;
+  // 접힌 시기의 공고는 화면에 그리지 않는다. 드래그 고르기도 보이는 줄 기준
+  const visibleRows = grouped ? rows.filter((r) => !collapsed.has(periodKey(r))) : rows;
+  const visibleIndex = new Map(visibleRows.map((r, i) => [r.id, i]));
   const periodTitle = (key: string) => (key ? `${key.slice(0, 4)}년 ${key.endsWith("상") ? "상반기" : "하반기"}` : "마감일 없음");
   const filtering = priorityFilter.length > 0 || typeFilter.length > 0;
   const selectedRows = rows.filter((p) => selected.has(p.id));
@@ -511,7 +533,7 @@ export function PostingList({
       setDragging(true);
     }
     const next = new Set(d.base);
-    for (let i = Math.min(d.start, index); i <= Math.max(d.start, index); i++) next.add(rows[i].id);
+    for (let i = Math.min(d.start, index); i <= Math.max(d.start, index); i++) next.add(visibleRows[i].id);
     setSelected(next);
   }
 
@@ -764,24 +786,35 @@ export function PostingList({
             const dim = days !== null && days < 0 && "opacity-45";
             const isSelected = selected.has(posting.id);
             const previous = previousApplication(posting, postings);
-            // 시기가 바뀌는 첫 줄 위에 구분 띠
+            // 시기가 바뀌는 첫 줄 위에 구분 띠 (누르면 그 시기를 접었다 편다)
             const key = periodKey(posting);
             const band = grouped && (index === 0 || periodKey(rows[index - 1]) !== key);
             const inGroup = band ? rows.filter((r) => periodKey(r) === key) : [];
             const groupPast = inGroup.length > 0 && inGroup.every((r) => (allDaysLeft[r.id] ?? 0) < 0) && key !== "";
+            const folded = grouped && collapsed.has(key);
+            const vIndex = visibleIndex.get(posting.id) ?? -1;
             return (
               <Fragment key={posting.id}>
               {band && (
-                <li role="presentation" className="flex items-center gap-2.5 bg-card px-3 pt-5 pb-2 text-xs text-muted-foreground md:px-6 lg:pl-12">
-                  <span className="text-[13px] font-semibold text-foreground">{periodTitle(key)}</span>
-                  <span className="tabular-nums">{inGroup.length}개{groupPast && " · 마감 지남"}</span>
-                  <span aria-hidden className="h-px flex-1 bg-border" />
+                <li className={cn("bg-muted", index > 0 && "mt-4")}>
+                  <button
+                    type="button"
+                    aria-expanded={!folded}
+                    onClick={() => toggleCollapsed(key)}
+                    className="flex w-full items-center gap-2.5 px-3 py-3.5 text-left text-xs text-muted-foreground hover:bg-accent md:px-6 lg:pl-5"
+                  >
+                    {/* 글자는 체크 상자와 같은 자리에서 시작 (2026-11-13 사용자 요청) */}
+                    <span className="text-sm font-semibold text-foreground">{periodTitle(key)}</span>
+                    <span className="tabular-nums">{inGroup.length}개{groupPast && " · 마감 지남"}</span>
+                    <ChevronDown className={cn("ml-auto size-4 shrink-0 text-foreground/60 transition-transform", folded && "-rotate-90")} />
+                  </button>
                 </li>
               )}
+              {!folded && (
               <li
                 key={posting.id}
-                onPointerDown={(e) => onRowPointerDown(e, index)}
-                onPointerEnter={() => onRowPointerEnter(index)}
+                onPointerDown={(e) => onRowPointerDown(e, vIndex)}
+                onPointerEnter={() => onRowPointerEnter(vIndex)}
                 className={cn(
                   "group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6 lg:pl-12",
                   TABLE_COLUMNS,
@@ -897,6 +930,7 @@ export function PostingList({
                   </div>
                 </div>
               </li>
+              )}
               </Fragment>
             );
           })}
