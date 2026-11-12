@@ -115,45 +115,43 @@ function FilterMenu({
   onChange: (next: string[]) => void;
 }) {
   const active = selected.length > 0;
-  // 고른 옵션 이름 (2개까지, 더 있으면 "외 n") (2026-11-12 사용자 요청)
-  const picked = options.filter((o) => selected.includes(o.value)).map((o) => o.label);
-  const summary = picked.length > 2 ? `${picked.slice(0, 2).join(", ")} 외 ${picked.length - 2}` : picked.join(", ");
+  // 고른 옵션 (보기 순서대로)
+  const picked = options.filter((o) => selected.includes(o.value));
   return (
     <DropdownMenu>
-      {/* 안 골랐을 때는 검정 글자, 고르면 대표 색 + 고른 옵션 + [×] */}
+      {/* 안 골랐을 때는 검정 글자, 고르면 대표 색 + 고른 옵션마다 [옵션 ×] 로 하나씩 지우기 (2026-11-12 사용자 요청) */}
       <div
         className={cn(
-          "inline-flex h-8 items-center rounded-sm border transition-colors",
-          active ? "border-primary bg-primary-soft text-primary-strong" : "border-input bg-card text-foreground",
+          "inline-flex min-h-8 flex-wrap items-center gap-1 rounded-sm border transition-colors",
+          active ? "border-primary bg-primary-soft py-0.5 pr-1 text-primary-strong" : "border-input bg-card text-foreground",
         )}
       >
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             className={cn(
-              "inline-flex h-full max-w-64 items-center gap-1 rounded-sm text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-              active ? "pr-1 pl-3" : "px-3 hover:bg-muted",
+              "inline-flex h-7 items-center gap-1 rounded-sm px-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              active ? "pr-1.5" : "hover:bg-muted",
             )}
           >
-            <span className="shrink-0">
-              {label}
-              {active && ":"}
-            </span>
-            {active && <span className="truncate font-semibold">{summary}</span>}
+            {label}
             <ChevronDown className="size-3.5 shrink-0 opacity-70" />
           </button>
         </DropdownMenuTrigger>
-        {active && (
-          <button
-            type="button"
-            aria-label={`${label} 걸러 보기 지우기`}
-            title={`${label} 걸러 보기 지우기`}
-            onClick={() => onChange([])}
-            className="mr-1 inline-flex size-6 items-center justify-center rounded-xs hover:bg-primary/15"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
+        {picked.map((o) => (
+          <span key={o.value} className="inline-flex h-6 items-center gap-0.5 rounded-xs bg-card pr-0.5 pl-2 text-xs font-semibold ring-1 ring-primary/30">
+            {o.label}
+            <button
+              type="button"
+              aria-label={`${label} ${o.label} 빼기`}
+              title={`${o.label} 빼기`}
+              onClick={() => onChange(selected.filter((v) => v !== o.value))}
+              className="inline-flex size-5 items-center justify-center rounded-xs hover:bg-primary/15"
+            >
+              <X className="size-3" />
+            </button>
+          </span>
+        ))}
       </div>
       <DropdownMenuContent align="start" className="w-44">
         <DropdownMenuLabel>{label}로 걸러 보기</DropdownMenuLabel>
