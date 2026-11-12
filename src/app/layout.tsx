@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
@@ -25,6 +25,13 @@ export const metadata: Metadata = {
     template: "%s · Hurdle",
   },
   description: "여러 회사에 동시에 지원하는 취준생을 위한 공고 관리 서비스예요. 링크를 붙여넣으면 마감일과 전형 단계를 정리하고, 마감이 가까운 공고와 다음에 할 일을 한 화면에 보여 드려요.",
+  applicationName: "Hurdle",
+  // 사파리 [Dock에 추가]·아이폰 [홈 화면에 추가] 때 이름 (D-60)
+  appleWebApp: { capable: true, title: "Hurdle", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FFFFFF",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
