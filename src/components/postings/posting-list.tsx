@@ -62,6 +62,8 @@ const TABS: { value: Status | "all"; label: string }[] = [
   { value: "past", label: "지난 공고" },
 ];
 const NO_TYPE = "미정";
+// 위쪽 막대의 버튼은 색 없이 검정 글씨 (2026-11-13 사용자 요청: 상단 컬러 사용 자제)
+const NEUTRAL_OUTLINE = "text-foreground hover:bg-muted hover:text-foreground aria-expanded:bg-muted";
 // 표 칸 너비 (D-44): 좁으면 기업·직무에 자리를 주고, 표가 넓을 때만 진행 단계 점을 보여 준다
 const TABLE_COLUMNS =
   "lg:grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_4.5rem_4.5rem_6rem_8.5rem] lg:@[60rem]:grid-cols-[minmax(0,1.6fr)_minmax(0,1.2fr)_6.5rem_6rem_5.5rem_7rem_9.5rem]";
@@ -635,10 +637,10 @@ export function PostingList({
       {selectedRows.length > 0 ? (
         /* 고른 공고 편집 막대 (D-66) */
         <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:px-6" role="toolbar" aria-label="고른 공고 한꺼번에 편집">
-          <span className="mr-1 text-sm font-semibold text-primary-strong tabular-nums">{selectedRows.length}개 선택됨</span>
+          <span className="mr-1 text-sm font-semibold text-foreground tabular-nums">{selectedRows.length}개 선택됨</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={bulkBusy}>
+              <Button variant="outline" size="sm" disabled={bulkBusy} className={NEUTRAL_OUTLINE}>
                 우선순위
                 <ChevronDown data-icon="inline-end" />
               </Button>
@@ -654,7 +656,7 @@ export function PostingList({
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={bulkBusy}>
+              <Button variant="outline" size="sm" disabled={bulkBusy} className={NEUTRAL_OUTLINE}>
                 근로형태
                 <ChevronDown data-icon="inline-end" />
               </Button>
@@ -668,7 +670,7 @@ export function PostingList({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm" disabled={bulkBusy} onClick={bulkFinish}>
+          <Button variant="outline" size="sm" disabled={bulkBusy} onClick={bulkFinish} className={NEUTRAL_OUTLINE}>
             <Flag data-icon="inline-start" />
             전형 끝
           </Button>
