@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/user-menu";
 import { BetaBadge } from "@/components/beta-badge";
 import { FeedbackButton } from "@/components/feedback-button";
+import { RefreshOnReturn } from "@/components/refresh-on-return";
 import { MobileNav, SideNav } from "@/components/postings/app-nav";
 
 // 로그인 뒤 앱 화면의 틀 (DESIGN.md 5): 컴퓨터는 왼쪽 메뉴바, 휴대폰은 위쪽 바 + 아래 탭바
@@ -57,6 +58,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
       <Suspense fallback={null}>
         <MobileNav />
       </Suspense>
+      <RefreshOnReturn />
     </div>
   );
 }

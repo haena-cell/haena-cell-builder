@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { arrangeSteps, defaultPrepLabels, PRIORITIES, type DeadlineKind, type PostingStep, type Priority } from "@/lib/postings";
 import { normalizeSourceUrl } from "@/lib/source-url";
@@ -9,6 +10,12 @@ import type { Json } from "@/lib/database.types";
 // 화면에서 부르는 공고 저장·수정·삭제. 누가 무엇을 바꿀 수 있는지는 DB 접근 규칙(RLS)이 본인 것만으로 막는다.
 
 export type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; message: string; existingId?: string };
+
+// 저장이 바뀌면 브라우저가 기억해 둔 화면을 비운다 → 다른 메뉴로 가도 바뀐 내용이 보인다 (D-64)
+function withRefresh<T extends { ok: boolean }>(result: T): T {
+  if (result.ok) refresh();
+  return result;
+}
 
 export type PostingSummary = { id: string; company: string; jobTitle: string };
 
@@ -103,7 +110,7 @@ export async function createPosting(input: NewPosting): Promise<ActionResult<{ i
     await supabase.from("postings").delete().eq("id", postingId);
     return { ok: false, message: FAILED };
   }
-  return { ok: true, id: postingId };
+  return withRefresh({ ok: true, id: postingId });
 }
 
 export async function updatePosting(id: string, fields: PostingFields): Promise<ActionResult> {
@@ -111,7 +118,7 @@ export async function updatePosting(id: string, fields: PostingFields): Promise<
   if (problem) return { ok: false, message: problem };
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("postings").update(fieldsToRow(fields)).eq("id", id).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
 
 // 공고 전체 고치기: 기본 정보 + 제출 서류 + 전형 절차 (D-48). 단계 진행 상태는 서버에서 다시 계산한다
@@ -170,7 +177,7 @@ export async function updatePostingFull(
     .eq("posting_id", id)
     .order("position");
   if (finalError || !finalRows) return { ok: false, message: FAILED };
-  return { ok: true, steps: finalRows.map((r) => ({ id: r.id, name: r.name, completedAt: r.completed_at })) };
+  return withRefresh({ ok: true, steps: finalRows.map((r) => ({ id: r.id, name: r.name, completedAt: r.completed_at })) });
 }
 
 // 목록 줄에서 고르는 우선순위·근로형태 (D-26)
@@ -184,13 +191,13 @@ export async function updatePostingMeta(
   if (meta.employmentType !== undefined) row.employment_type = meta.employmentType?.trim().slice(0, 50) || null;
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("postings").update(row).eq("id", id).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
 
 export async function deletePosting(id: string): Promise<ActionResult> {
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("postings").delete().eq("id", id).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." });
 }
 
 // [제출 완료] / [되돌리기]
@@ -201,13 +208,13 @@ export async function setStepCompleted(stepId: string, completed: boolean): Prom
     .update({ completed_at: completed ? new Date().toISOString() : null })
     .eq("id", stepId)
     .select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
 
 export async function setPrepDone(itemId: string, done: boolean): Promise<ActionResult> {
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("prep_items").update({ done }).eq("id", itemId).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
 
 // 같은 링크로 이미 저장한 공고 (정리하기 전에 미리 알려 주기, T-08)
@@ -264,7 +271,7 @@ export async function setCurrentStep(postingId: string, current: number): Promis
       .lte("position", current)
       .is("completed_at", null),
   ]);
-  return undone.error || done.error ? { ok: false, message: FAILED } : { ok: true };
+  return withRefresh(undone.error || done.error ? { ok: false, message: FAILED } : { ok: true });
 }
 
 // ── 준비 항목 할 일 (D-20) ──────────────────────────────
@@ -295,7 +302,7 @@ export async function addPrepItem(postingId: string, rawLabel: string): Promise<
     .insert({ posting_id: postingId, position, label })
     .select("id")
     .single();
-  return error || !data ? { ok: false, message: FAILED } : { ok: true, id: data.id };
+  return withRefresh(error || !data ? { ok: false, message: FAILED } : { ok: true, id: data.id });
 }
 
 export async function updatePrepItem(
@@ -311,13 +318,13 @@ export async function updatePrepItem(
   if (change.dueDate !== undefined) row.due_date = cleanDate(change.dueDate);
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("prep_items").update(row).eq("id", itemId).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
 
 export async function deletePrepItem(itemId: string): Promise<ActionResult> {
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("prep_items").delete().eq("id", itemId).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." });
 }
 
 export async function addSubtask(prepItemId: string, rawLabel: string): Promise<ActionResult<{ id: string }>> {
@@ -336,7 +343,7 @@ export async function addSubtask(prepItemId: string, rawLabel: string): Promise<
     .insert({ prep_item_id: prepItemId, position, label })
     .select("id")
     .single();
-  return error || !data ? { ok: false, message: FAILED } : { ok: true, id: data.id };
+  return withRefresh(error || !data ? { ok: false, message: FAILED } : { ok: true, id: data.id });
 }
 
 export async function updateSubtask(
@@ -353,11 +360,11 @@ export async function updateSubtask(
   if (change.dueDate !== undefined) row.due_date = cleanDate(change.dueDate);
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("prep_subtasks").update(row).eq("id", subtaskId).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
 }
 
 export async function deleteSubtask(subtaskId: string): Promise<ActionResult> {
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.from("prep_subtasks").delete().eq("id", subtaskId).select("id");
-  return !error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." };
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: "지우지 못했어요. 다시 시도해 주세요." });
 }

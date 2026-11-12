@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PostingDetailSkeleton } from "@/components/postings/page-skeletons";
-import { connection } from "next/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingDetail } from "@/components/postings/posting-detail";
-import { getMyPosting, getMyPostings } from "@/lib/postings-db";
+import { getMyPostingsSnapshot } from "@/lib/postings-db";
 import { otherDeadlines } from "@/lib/postings";
 
 export const metadata: Metadata = {
@@ -15,9 +14,9 @@ export const metadata: Metadata = {
 };
 
 async function Detail({ params }: { params: Promise<{ id: string }> }) {
-  await connection();
   const id = (await params).id;
-  const [posting, all] = await Promise.all([getMyPosting(id), getMyPostings()]);
+  const { postings: all, nowIso } = await getMyPostingsSnapshot();
+  const posting = all.find((p) => p.id === id);
   if (!posting) {
     return (
       <>
@@ -31,7 +30,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
       </>
     );
   }
-  return <PostingDetail initialPosting={posting} nowIso={new Date().toISOString()} otherDeadlines={otherDeadlines(all, posting.id)} />;
+  return <PostingDetail initialPosting={posting} nowIso={nowIso} otherDeadlines={otherDeadlines(all, posting.id)} />;
 }
 
 export default function PostingDetailPage({ params }: PageProps<"/app/postings/[id]">) {

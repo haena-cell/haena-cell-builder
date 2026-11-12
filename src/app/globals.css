@@ -76,6 +76,10 @@
   @keyframes skeleton-shimmer {
     100% { transform: translateX(100%); }
   }
+  /* 메뉴를 옮길 때 화면이 툭 바뀌지 않고 살짝 나타난다 (D-64) */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+  }
 }
 
 :root {

@@ -1,3 +1,4 @@
+import { cacheLife } from "next/cache";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import type { Posting } from "@/lib/postings";
@@ -66,4 +67,12 @@ export async function getMyPosting(id: string): Promise<Posting | null> {
   const supabase = await createSupabaseServer();
   const { data } = await supabase.from("postings").select(SELECT).eq("id", id).maybeSingle();
   return data ? toPosting(data as Row) : null;
+}
+
+// 메뉴를 옮길 때 바로 보이게 (D-64): 내 공고 + 지금 시각을 이 사람 브라우저에만 5분 기억한다.
+// 서버에는 남기지 않고(private), 저장을 바꾸면(posting-actions 의 refresh) 바로 비운다.
+export async function getMyPostingsSnapshot(): Promise<{ postings: Posting[]; nowIso: string }> {
+  "use cache: private";
+  cacheLife("minutes");
+  return { postings: await getMyPostings(), nowIso: new Date().toISOString() };
 }

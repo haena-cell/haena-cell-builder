@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PostingDetailSkeleton } from "@/components/postings/page-skeletons";
-import { connection } from "next/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingDetail } from "@/components/postings/posting-detail";
-import { demoPostings } from "@/lib/demo-postings";
+import { getDemoSnapshot } from "@/lib/demo-snapshot";
 import { otherDeadlines } from "@/lib/postings";
 
 export const metadata: Metadata = {
@@ -15,10 +14,8 @@ export const metadata: Metadata = {
 };
 
 async function Detail({ params }: { params: Promise<{ id: string }> }) {
-  await connection();
-  const now = new Date();
   const { id } = await params;
-  const all = demoPostings(now);
+  const { postings: all, nowIso } = await getDemoSnapshot();
   const posting = all.find((p) => p.id === id);
   if (!posting) {
     return (
@@ -32,7 +29,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
       </>
     );
   }
-  return <PostingDetail initialPosting={posting} nowIso={now.toISOString()} otherDeadlines={otherDeadlines(all, posting.id)} />;
+  return <PostingDetail initialPosting={posting} nowIso={nowIso} otherDeadlines={otherDeadlines(all, posting.id)} />;
 }
 
 export default function DemoPostingDetailPage({ params }: { params: Promise<{ id: string }> }) {

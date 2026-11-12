@@ -1,20 +1,18 @@
 import { Suspense } from "react";
 import { HomeSkeleton } from "@/components/postings/page-skeletons";
-import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { DemoProvider } from "@/components/postings/demo-context";
 import { HomeDashboard } from "@/components/postings/home-dashboard";
-import { demoPostings } from "@/lib/demo-postings";
+import { getDemoSnapshot } from "@/lib/demo-snapshot";
 import { kstDateKey } from "@/lib/postings";
 
 // 랜딩 첫 화면의 예시 홈 (D-36): 둘러보기와 같은 화면·예시 공고. 안쪽은 누를 수 없고 전체가 /demo 로 가는 링크다
 async function PreviewHome() {
-  await connection();
-  const now = new Date();
+  const { postings, nowIso } = await getDemoSnapshot();
   return (
     <DemoProvider>
-      <HomeDashboard initialPostings={demoPostings(now)} today={kstDateKey(now)} />
+      <HomeDashboard initialPostings={postings} today={kstDateKey(new Date(nowIso))} />
     </DemoProvider>
   );
 }

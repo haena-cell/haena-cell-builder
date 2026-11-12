@@ -8,7 +8,8 @@ const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
 function Loading({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
-    <div role="status" aria-label={label} className={className}>
+    // 금방 끝나는 로딩에서는 뼈대가 번쩍이지 않게 0.15초 기다렸다가 서서히 나타난다
+    <div role="status" aria-label={label} className={cn("animate-[fade-in_.25s_ease-out_.15s_both] motion-reduce:animate-none", className)}>
       {children}
     </div>
   );

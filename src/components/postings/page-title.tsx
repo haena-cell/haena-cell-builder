@@ -42,6 +42,7 @@ export function PageBody({ children, narrow = false }: { children: React.ReactNo
     <main
       className={cn(
         "mx-auto flex w-full flex-col gap-4 px-3 pt-2 pb-28 lg:px-4 lg:pt-8 lg:pb-12",
+        "animate-[fade-in_.2s_ease-out] motion-reduce:animate-none",
         narrow ? "max-w-[760px]" : "max-w-[1160px]",
       )}
     >

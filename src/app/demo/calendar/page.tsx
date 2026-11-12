@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CalendarSkeleton } from "@/components/postings/page-skeletons";
-import { connection } from "next/server";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingCalendar } from "@/components/postings/posting-calendar";
-import { demoPostings } from "@/lib/demo-postings";
+import { getDemoSnapshot } from "@/lib/demo-snapshot";
 import { kstDateKey } from "@/lib/postings";
 
 export const metadata: Metadata = {
@@ -12,9 +11,9 @@ export const metadata: Metadata = {
 };
 
 async function Calendar() {
-  await connection();
-  const now = new Date();
-  return <PostingCalendar postings={demoPostings(now)} today={kstDateKey(now)} />;
+  const { postings, nowIso } = await getDemoSnapshot();
+  const now = new Date(nowIso);
+  return <PostingCalendar postings={postings} today={kstDateKey(now)} />;
 }
 
 export default function DemoCalendarPage() {

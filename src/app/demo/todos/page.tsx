@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { TodosSkeleton } from "@/components/postings/page-skeletons";
-import { connection } from "next/server";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { TodoBoard } from "@/components/postings/todo-board";
-import { demoPostings } from "@/lib/demo-postings";
+import { getDemoSnapshot } from "@/lib/demo-snapshot";
 import { kstDateKey } from "@/lib/postings";
 
 export const metadata: Metadata = {
@@ -12,9 +11,9 @@ export const metadata: Metadata = {
 };
 
 async function Todos() {
-  await connection();
-  const now = new Date();
-  return <TodoBoard initialPostings={demoPostings(now)} today={kstDateKey(now)} />;
+  const { postings, nowIso } = await getDemoSnapshot();
+  const now = new Date(nowIso);
+  return <TodoBoard initialPostings={postings} today={kstDateKey(now)} />;
 }
 
 export default function DemoTodosPage() {

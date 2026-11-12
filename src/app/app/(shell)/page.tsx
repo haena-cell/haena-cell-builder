@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { HomeSkeleton } from "@/components/postings/page-skeletons";
-import { connection } from "next/server";
 import { HomeDashboard } from "@/components/postings/home-dashboard";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { kstDateKey } from "@/lib/postings";
-import { getMyPostings } from "@/lib/postings-db";
+import { getMyPostingsSnapshot } from "@/lib/postings-db";
 
 export const metadata: Metadata = {
   title: "홈",
@@ -13,8 +12,8 @@ export const metadata: Metadata = {
 
 // 홈 (D-25): 마감 임박 · 이번 달 달력 · 남은 할 일을 한눈에
 async function Home() {
-  await connection();
-  return <HomeDashboard initialPostings={await getMyPostings()} today={kstDateKey(new Date())} />;
+  const { postings, nowIso } = await getMyPostingsSnapshot();
+  return <HomeDashboard initialPostings={postings} today={kstDateKey(new Date(nowIso))} />;
 }
 
 export default function AppHomePage() {
