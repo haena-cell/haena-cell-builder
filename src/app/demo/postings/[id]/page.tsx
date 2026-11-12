@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingDetail } from "@/components/postings/posting-detail";
 import { getDemoSnapshot } from "@/lib/demo-snapshot";
-import { otherDeadlines } from "@/lib/postings";
+import { companyHistory, otherDeadlines } from "@/lib/postings";
 
 export const metadata: Metadata = {
   title: "공고 상세",
@@ -29,7 +29,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
       </>
     );
   }
-  return <PostingDetail initialPosting={posting} nowIso={nowIso} otherDeadlines={otherDeadlines(all, posting.id)} />;
+  return <PostingDetail initialPosting={posting} nowIso={nowIso} otherDeadlines={otherDeadlines(all, posting.id)} history={companyHistory(posting, all)} />;
 }
 
 export default function DemoPostingDetailPage({ params }: { params: Promise<{ id: string }> }) {

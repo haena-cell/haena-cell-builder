@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { CalendarPlus, ChevronDown, Download, ExternalLink, FileText, Pencil, Trash2, Undo2 } from "lucide-react";
@@ -23,6 +24,7 @@ import {
   formatDeadline,
   kstDateKey,
   withCurrentStep,
+  type CompanyHistoryItem,
   type Posting,
 } from "@/lib/postings";
 import { cn } from "@/lib/utils";
@@ -92,6 +94,60 @@ function MemoBox({ postingId, initial }: { postingId: string; initial: string })
   );
 }
 
+// 이 회사 지원 기록 (D-72): 같은 회사 공고의 시기·직무·결과. 지난 공고는 메모를 그 자리에서 펼쳐 본다
+const RESULT_CHIP: Record<CompanyHistoryItem["result"]["tone"], string> = {
+  before: "bg-secondary text-muted-foreground",
+  active: "bg-primary-soft text-primary-strong",
+  done: "bg-secondary text-foreground/70",
+  fail: "bg-destructive-soft text-destructive",
+  pass: "bg-success text-success-foreground",
+};
+
+function CompanyHistory({ items, href }: { items: CompanyHistoryItem[]; href: (path: string) => string }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const past = items.filter((i) => !i.isCurrent).length;
+  return (
+    <Section title="이 회사 지원 기록" aside={<span className="text-xs text-muted-foreground">{past + 1}번째 지원</span>}>
+      <ul className="flex flex-col divide-y divide-border-subtle">
+        {items.map((item) => (
+          <li key={item.id} className="flex flex-col gap-2 py-2.5 first:pt-0 last:pb-0">
+            <div className="flex items-center gap-3 text-sm">
+              <span className="w-16 shrink-0 text-xs text-muted-foreground tabular-nums">{item.period ?? "시기 없음"}</span>
+              <div className="min-w-0 flex-1">
+                {item.isCurrent ? (
+                  <p className="truncate font-semibold">
+                    {item.jobTitle} <span className="font-normal text-muted-foreground">· 지금 공고</span>
+                  </p>
+                ) : (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Link href={href(`/app/postings/${item.id}`)} className="truncate underline-offset-2 hover:underline">
+                      {item.jobTitle}
+                    </Link>
+                    {item.memo && (
+                      <button
+                        type="button"
+                        aria-expanded={openId === item.id}
+                        onClick={() => setOpenId((v) => (v === item.id ? null : item.id))}
+                        className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      >
+                        {openId === item.id ? "메모 접기" : "메모 보기"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className={cn("shrink-0 rounded-xs px-2 py-0.5 text-xs font-medium", RESULT_CHIP[item.result.tone])}>{item.result.label}</span>
+            </div>
+            {openId === item.id && item.memo && (
+              <p className="ml-19 max-h-60 overflow-y-auto rounded-xl bg-muted p-3 text-sm leading-relaxed whitespace-pre-wrap">{item.memo}</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 // 원문 보기 (위쪽 접힘 띠): 링크 · 붙여넣은 글. 캡처는 저장하지 않아서(D-08) 안내만
 function SourceToggle({ posting }: { posting: Posting }) {
   const hasAny = posting.sourceUrl || posting.sourceText;
@@ -133,10 +189,12 @@ export function PostingDetail({
   initialPosting,
   nowIso,
   otherDeadlines = [],
+  history = [],
 }: {
   initialPosting: Posting;
   nowIso: string;
   otherDeadlines?: OtherPostingDeadline[];
+  history?: CompanyHistoryItem[];
 }) {
   const router = useRouter();
   const href = useAppHref();
@@ -423,6 +481,7 @@ export function PostingDetail({
                 onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
               />
             </Section>
+            {history.length > 1 && <CompanyHistory items={history} href={href} />}
             <MemoBox postingId={posting.id} initial={posting.memo ?? ""} />
           </div>
         </div>

@@ -39,7 +39,10 @@ import {
   daysLeftFor,
   EMPLOYMENT_TYPES,
   kstDateKey,
+  periodOf,
+  previousApplication,
   PRIORITIES,
+  resultOf,
   withCurrentStep,
   type Posting,
   type Priority,
@@ -744,6 +747,7 @@ export function PostingList({
             const missed = days !== null && days < 0 && posting.steps.every((s) => s.completedAt === null);
             const dim = missed && "opacity-50";
             const isSelected = selected.has(posting.id);
+            const previous = previousApplication(posting, postings);
             return (
               <li
                 key={posting.id}
@@ -769,13 +773,24 @@ export function PostingList({
                 />
                 {/* 기업 · 직무 (줄 전체를 누르면 상세로) */}
                 <div className={cn("min-w-0", dim)}>
-                  <Link
-                    href={href(`/app/postings/${posting.id}`)}
-                    draggable={false}
-                    className="block truncate text-sm font-semibold after:absolute after:inset-0"
-                  >
-                    {posting.company}
-                  </Link>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <Link
+                      href={href(`/app/postings/${posting.id}`)}
+                      draggable={false}
+                      className="truncate text-sm font-semibold after:absolute after:inset-0"
+                    >
+                      {posting.company}
+                    </Link>
+                    {/* 같은 회사 이전 지원 (D-72): "재지원 · 2026 상 불합격" */}
+                    {previous && (
+                      <span
+                        className="shrink-0 rounded-xs bg-primary-soft px-1.5 py-0.5 text-[11px] font-medium text-primary-strong"
+                        title={`${previous.company} · ${previous.jobTitle}`}
+                      >
+                        재지원 · {[periodOf(previous), resultOf(previous).label].filter(Boolean).join(" ")}
+                      </span>
+                    )}
+                  </div>
                   <p className="truncate text-xs text-muted-foreground">
                     {posting.jobTitle}
                     {posting.isSample && <span className="ml-1.5 text-warning-foreground">· 연습용 예시</span>}

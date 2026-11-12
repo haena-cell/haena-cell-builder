@@ -149,3 +149,68 @@ export function otherDeadlines(postings: Posting[], exceptId: string) {
     .filter((p) => p.id !== exceptId && p.deadlineKind === "date" && p.deadlineAt)
     .map((p) => ({ id: p.id, company: p.company, date: kstDateKey(new Date(p.deadlineAt as string)) }));
 }
+
+// ── 같은 회사 재지원 (D-72) ─────────────────────────────
+
+// 같은 회사인지 비교할 열쇠: (주)·주식회사·괄호 안 글자·띄어쓰기·대소문자를 뺀다
+export function companyKey(name: string) {
+  return name
+    .replace(/\(주\)|㈜|주식회사/g, "")
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, "")
+    .replace(/[\s.·_-]/g, "")
+    .toLowerCase();
+}
+
+// 시기: 마감일(한국 날짜) 1~6월 "상", 7~12월 "하". 마감일이 없으면 null
+export function periodOf(p: Pick<Posting, "deadlineKind" | "deadlineAt">) {
+  if (p.deadlineKind !== "date" || !p.deadlineAt) return null;
+  const key = kstDateKey(new Date(p.deadlineAt));
+  return `${key.slice(0, 4)} ${Number(key.slice(5, 7)) <= 6 ? "상" : "하"}`;
+}
+
+export type ResultTone = "before" | "active" | "done" | "fail" | "pass";
+
+// 결과: 메모 첫머리의 "결과: …"(노션에서 옮긴 공고)가 있으면 그것, 없으면 진행 단계로
+export function resultOf(p: Pick<Posting, "steps" | "memo">): { label: string; tone: ResultTone } {
+  const written = /(?:^|\n)결과: ?([^\n]{1,20})/.exec(p.memo ?? "")?.[1]?.trim();
+  if (written) return { label: written, tone: /합격/.test(written) && !/불합격/.test(written) ? "pass" : "fail" };
+  const current = currentStepIndex(p.steps);
+  if (current === -1) return { label: "전형 끝", tone: "done" };
+  if (current === 0) return { label: "지원 전", tone: "before" };
+  return { label: `${p.steps[current].name} 차례`, tone: "active" };
+}
+
+const deadlineTime = (p: Posting) => (p.deadlineKind === "date" && p.deadlineAt ? Date.parse(p.deadlineAt) : null);
+
+// 이 공고보다 마감이 이른, 같은 회사의 가장 최근 공고 (목록 '재지원' 배지용). 마감이 같으면(같은 시기 동시 지원) 빼고
+export function previousApplication(p: Posting, all: Posting[]) {
+  const key = companyKey(p.company);
+  const mine = deadlineTime(p);
+  if (!key || mine === null) return null;
+  const earlier = all
+    .filter((o) => o.id !== p.id && companyKey(o.company) === key)
+    .filter((o) => {
+      const t = deadlineTime(o);
+      return t !== null && kstDateKey(new Date(t)) < kstDateKey(new Date(mine));
+    })
+    .sort((a, b) => (deadlineTime(b) ?? 0) - (deadlineTime(a) ?? 0));
+  return earlier[0] ?? null;
+}
+
+// 같은 회사 공고 모두(자기 포함), 마감 늦은 순. 2개 이상일 때만 상세에 보여 준다
+export function sameCompanyPostings(p: Posting, all: Posting[]) {
+  const key = companyKey(p.company);
+  if (!key) return [];
+  return all
+    .filter((o) => o.id === p.id || companyKey(o.company) === key)
+    .sort((a, b) => (deadlineTime(b) ?? Infinity) - (deadlineTime(a) ?? Infinity));
+}
+
+export type CompanyHistoryItem = { id: string; jobTitle: string; period: string | null; result: { label: string; tone: ResultTone }; memo: string | null; isCurrent: boolean };
+
+// 공고 상세 '이 회사 지원 기록'에 넘길 작은 목록. 같은 회사 공고가 하나뿐이면 빈 배열
+export function companyHistory(p: Posting, all: Posting[]): CompanyHistoryItem[] {
+  const list = sameCompanyPostings(p, all);
+  if (list.length < 2) return [];
+  return list.map((o) => ({ id: o.id, jobTitle: o.jobTitle, period: periodOf(o), result: resultOf(o), memo: o.memo ?? null, isCurrent: o.id === p.id }));
+}
