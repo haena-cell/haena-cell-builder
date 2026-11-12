@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { pushUndo } from "@/lib/undo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateBlock, DeadlineBadge } from "@/components/postings/posting-card";
@@ -137,7 +138,26 @@ export function HomeDashboard({ initialPostings, today }: { initialPostings: Pos
     if (!result.ok) {
       patch(row, !done);
       toast.error(result.message);
+      return;
     }
+    // Ctrl+Z 로 되돌리기 (D-62): 이 줄과, 함께 끝낸 하위 할 일을 원래대로
+    pushUndo(`'${row.label}' ${done ? "체크" : "체크 풀기"}`, async () => {
+      const subIds = new Set(subs.map((t) => t.id));
+      patch(row, !done);
+      setPostings((prev) =>
+        prev.map((p) =>
+          p.id !== row.posting.id
+            ? p
+            : { ...p, prepItems: p.prepItems.map((it) => ({ ...it, subtasks: it.subtasks.map((t) => (subIds.has(t.id) ? { ...t, done: false } : t)) })) },
+        ),
+      );
+      const results = await Promise.all([
+        row.kind === "item" ? setPrepDone(row.id, !done) : updateSubtask(row.id, { done: !done }),
+        ...subs.map((t) => updateSubtask(t.id, { done: false })),
+      ]);
+      const failed = results.find((r) => !r.ok);
+      if (failed && !failed.ok) toast.error(failed.message);
+    });
   }
 
   // 이번 달 달력

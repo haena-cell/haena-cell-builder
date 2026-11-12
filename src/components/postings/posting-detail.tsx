@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarPlus, ChevronDown, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
+import { pushUndo } from "@/lib/undo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -96,12 +97,16 @@ export function PostingDetail({
   }
 
   // 현재 단계 바꾸기: [이전 단계로] 또는 단계를 직접 골라서
-  async function moveToStep(target: number) {
+  async function moveToStep(target: number, record = true) {
+    const from = currentStepIndex(posting.steps);
     const ok = await optimistic(
       (p) => ({ ...p, steps: withCurrentStep(p.steps, target) }),
       () => setCurrentStep(posting.id, target),
     );
-    if (ok) toast(`지금 단계: ${posting.steps[target]?.name ?? "전형 끝"}`);
+    if (!ok) return;
+    toast(`지금 단계: ${posting.steps[target]?.name ?? "전형 끝"}`);
+    // Ctrl+Z: 바꾸기 전 단계로 (D-62)
+    if (record) pushUndo("단계 바꾸기", () => moveToStep(from === -1 ? posting.steps.length : from, false));
   }
 
 
@@ -180,11 +185,18 @@ export function PostingDetail({
               posting={posting}
               onCancel={() => setEditing(false)}
               onSave={async (next) => {
+                const before = posting;
                 const result = await updatePostingFull(posting.id, next, next.steps);
                 if (!result.ok) return result.message;
                 setPosting({ ...next, steps: result.steps });
                 setEditing(false);
                 toast("고친 내용을 저장했어요");
+                // Ctrl+Z: 고치기 전 내용으로 다시 저장 (준비 항목은 그대로) (D-62)
+                pushUndo("공고 수정", async () => {
+                  const back = await updatePostingFull(before.id, before, before.steps);
+                  if (!back.ok) return toast.error(back.message);
+                  setPosting((p) => ({ ...before, prepItems: p.prepItems, steps: back.steps }));
+                });
                 return null;
               }}
             />

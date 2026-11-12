@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/posting-actions";
+import { pushUndo } from "@/lib/undo";
 import { usePostingActions } from "@/components/postings/demo-context";
 import { daysToDate, formatDueDate, type PrepItem, type Subtask } from "@/lib/postings";
 import { cn } from "@/lib/utils";
@@ -249,6 +250,19 @@ export function PrepTodos({
     return result.ok;
   }
 
+  // 바꾼 뒤 Ctrl+Z 로 되돌릴 수 있게 반대 동작을 쌓는다 (D-62)
+  async function undoable(
+    label: string,
+    change: (items: Items) => Items,
+    save: () => Promise<ActionResult>,
+    revert: (items: Items) => Items,
+    revertSave: () => Promise<ActionResult>,
+  ) {
+    const ok = await run(change, save);
+    if (ok) pushUndo(label, () => run(revert, revertSave));
+    return ok;
+  }
+
   const patchItem = (id: string, patch: Partial<PrepItem>) => (list: Items) =>
     list.map((it) => (it.id === id ? { ...it, ...patch } : it));
   const patchSub = (itemId: string, subId: string, patch: Partial<Subtask> | null) => (list: Items) =>
@@ -267,15 +281,24 @@ export function PrepTodos({
   function toggleItem(item: PrepItem) {
     const done = !item.done;
     const subs = done ? item.subtasks.filter((t) => !t.done) : [];
-    return run(
+    const subIds = new Set(subs.map((t) => t.id));
+    const saveAll = (d: boolean) => async () => {
+      const results = await Promise.all([setPrepDone(item.id, d), ...subs.map((t) => updateSubtask(t.id, { done: d }))]);
+      return results.find((r) => !r.ok) ?? results[0];
+    };
+    return undoable(
+      `'${item.label}' ${done ? "체크" : "체크 풀기"}`,
       (list) =>
         list.map((it) =>
           it.id !== item.id ? it : { ...it, done, subtasks: done ? it.subtasks.map((t) => ({ ...t, done: true })) : it.subtasks },
         ),
-      async () => {
-        const results = await Promise.all([setPrepDone(item.id, done), ...subs.map((t) => updateSubtask(t.id, { done: true }))]);
-        return results.find((r) => !r.ok) ?? results[0];
-      },
+      saveAll(done),
+      // 되돌릴 때는 이번에 함께 끝낸 하위 할 일만 다시 안 끝낸 것으로
+      (list) =>
+        list.map((it) =>
+          it.id !== item.id ? it : { ...it, done: item.done, subtasks: it.subtasks.map((t) => (subIds.has(t.id) ? { ...t, done: false } : t)) },
+        ),
+      saveAll(!done),
     );
   }
 
@@ -327,7 +350,15 @@ export function PrepTodos({
                   maxLength={50}
                   editing={editing === item.id}
                   setEditing={(on) => setEditing(on ? item.id : null)}
-                  onSave={(label) => run(patchItem(item.id, { label }), () => updatePrepItem(item.id, { label }))}
+                  onSave={(label) =>
+                    undoable(
+                      `'${item.label}' 이름 바꾸기`,
+                      patchItem(item.id, { label }),
+                      () => updatePrepItem(item.id, { label }),
+                      patchItem(item.id, { label: item.label }),
+                      () => updatePrepItem(item.id, { label: item.label }),
+                    )
+                  }
                 />
                 {editing !== item.id && (
                   <>
@@ -335,7 +366,15 @@ export function PrepTodos({
                       value={item.dueDate}
                       done={item.done}
                       today={today}
-                      onChange={(dueDate) => run(patchItem(item.id, { dueDate }), () => updatePrepItem(item.id, { dueDate }))}
+                      onChange={(dueDate) =>
+                        undoable(
+                          `'${item.label}' 마감일`,
+                          patchItem(item.id, { dueDate }),
+                          () => updatePrepItem(item.id, { dueDate }),
+                          patchItem(item.id, { dueDate: item.dueDate }),
+                          () => updatePrepItem(item.id, { dueDate: item.dueDate }),
+                        )
+                      }
                     />
                     {hasSubs || isOpen ? (
                       <Button
@@ -374,7 +413,15 @@ export function PrepTodos({
                           <Check
                             checked={sub.done}
                             label={sub.label}
-                            onChange={() => run(patchSub(item.id, sub.id, { done: !sub.done }), () => updateSubtask(sub.id, { done: !sub.done }))}
+                            onChange={() =>
+                              undoable(
+                                `'${sub.label}' ${sub.done ? "체크 풀기" : "체크"}`,
+                                patchSub(item.id, sub.id, { done: !sub.done }),
+                                () => updateSubtask(sub.id, { done: !sub.done }),
+                                patchSub(item.id, sub.id, { done: sub.done }),
+                                () => updateSubtask(sub.id, { done: sub.done }),
+                              )
+                            }
                           />
                           <EditableText
                             value={sub.label}
@@ -382,7 +429,15 @@ export function PrepTodos({
                             maxLength={100}
                             editing={editing === sub.id}
                             setEditing={(on) => setEditing(on ? sub.id : null)}
-                            onSave={(label) => run(patchSub(item.id, sub.id, { label }), () => updateSubtask(sub.id, { label }))}
+                            onSave={(label) =>
+                              undoable(
+                                `'${sub.label}' 이름 바꾸기`,
+                                patchSub(item.id, sub.id, { label }),
+                                () => updateSubtask(sub.id, { label }),
+                                patchSub(item.id, sub.id, { label: sub.label }),
+                                () => updateSubtask(sub.id, { label: sub.label }),
+                              )
+                            }
                           />
                           {editing !== sub.id && (
                             <>
@@ -390,7 +445,15 @@ export function PrepTodos({
                                 value={sub.dueDate}
                                 done={sub.done}
                                 today={today}
-                                onChange={(dueDate) => run(patchSub(item.id, sub.id, { dueDate }), () => updateSubtask(sub.id, { dueDate }))}
+                                onChange={(dueDate) =>
+                                  undoable(
+                                    `'${sub.label}' 마감일`,
+                                    patchSub(item.id, sub.id, { dueDate }),
+                                    () => updateSubtask(sub.id, { dueDate }),
+                                    patchSub(item.id, sub.id, { dueDate: sub.dueDate }),
+                                    () => updateSubtask(sub.id, { dueDate: sub.dueDate }),
+                                  )
+                                }
                               />
                               <Button
                                 variant="ghost"

@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import { Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { StandaloneTitle } from "@/components/standalone-title";
+import { UndoShortcut } from "@/components/undo-shortcut";
+import { Suspense } from "react";
 import "./globals.css";
 
 const pretendard = localFont({
@@ -41,6 +43,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <StandaloneTitle />
+        <Suspense fallback={null}>
+          <UndoShortcut />
+        </Suspense>
         <Toaster theme="light" mobileOffset={{ bottom: 88 }} />
       </body>
     </html>

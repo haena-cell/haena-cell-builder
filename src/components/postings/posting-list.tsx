@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
+import { pushUndo } from "@/lib/undo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -276,7 +277,7 @@ export function PostingList({
   const handleBack = (posting: Posting) => moveTo(posting, posting.steps.length - 1);
 
   // 지금 단계 바꾸기 (상태 드롭다운·되돌리기). target 이 단계 수면 전형 끝
-  async function moveTo(posting: Posting, target: number) {
+  async function moveTo(posting: Posting, target: number, record = true) {
     const before = posting.steps;
     replace(posting.id, (p) => ({ ...p, steps: withCurrentStep(before, target) }));
     const result = await setCurrentStep(posting.id, target);
@@ -285,24 +286,40 @@ export function PostingList({
       return toast.error(result.message);
     }
     toast(`${posting.company} · 지금 단계: ${posting.steps[target]?.name ?? "전형 끝"}`);
+    // Ctrl+Z: 바꾸기 전 단계로 (D-62)
+    const from = currentStepIndex(before);
+    if (record) pushUndo(`${posting.company} 단계 바꾸기`, () => moveTo(posting, from === -1 ? before.length : from, false));
   }
 
-  async function saveMeta(posting: Posting, meta: { priority?: Priority; employmentType?: string | null }) {
+  async function saveMeta(posting: Posting, meta: { priority?: Priority; employmentType?: string | null }, record = true) {
     const before = posting;
     replace(posting.id, (p) => ({ ...p, ...meta }));
     const result = await updatePostingMeta(posting.id, meta);
     if (!result.ok) {
       replace(posting.id, () => before);
-      toast.error(result.message);
+      return toast.error(result.message);
     }
+    // Ctrl+Z: 바꾼 칸만 원래 값으로 (D-62)
+    const back: { priority?: Priority; employmentType?: string | null } = {};
+    if (meta.priority !== undefined) back.priority = before.priority;
+    if (meta.employmentType !== undefined) back.employmentType = before.employmentType;
+    if (record) pushUndo(`${posting.company} ${meta.priority !== undefined ? "우선순위" : "근로형태"}`, () => saveMeta({ ...before, ...meta }, back, false));
   }
 
   async function saveEdit(next: Posting) {
+    const before = postings.find((p) => p.id === next.id);
     const result = await updatePostingFull(next.id, next, next.steps);
     if (!result.ok) return result.message;
     replace(next.id, () => ({ ...next, steps: result.steps }));
     setEditing(null);
     toast("고친 내용을 저장했어요");
+    // Ctrl+Z: 고치기 전 내용으로 다시 저장 (D-62)
+    if (before)
+      pushUndo(`${before.company} 수정`, async () => {
+        const back = await updatePostingFull(before.id, before, before.steps);
+        if (!back.ok) return toast.error(back.message);
+        replace(before.id, (p) => ({ ...before, prepItems: p.prepItems, steps: back.steps }));
+      });
     return null;
   }
 
