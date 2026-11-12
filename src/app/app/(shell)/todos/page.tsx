@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { TodosSkeleton } from "@/components/postings/page-skeletons";
 import { connection } from "next/server";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { TodoBoard } from "@/components/postings/todo-board";
@@ -20,7 +21,7 @@ export default function TodosPage() {
   return (
     <PageBody narrow>
       <PageTitle title="할 일" />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="할 일을 불러오는 중" />}>
+      <Suspense fallback={<TodosSkeleton />}>
         <Todos />
       </Suspense>
     </PageBody>

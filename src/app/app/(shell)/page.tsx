@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { HomeSkeleton } from "@/components/postings/page-skeletons";
 import { connection } from "next/server";
 import { HomeDashboard } from "@/components/postings/home-dashboard";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
@@ -20,7 +21,7 @@ export default function AppHomePage() {
   return (
     <PageBody>
       <PageTitle title="홈" />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="불러오는 중" />}>
+      <Suspense fallback={<HomeSkeleton />}>
         <Home />
       </Suspense>
     </PageBody>

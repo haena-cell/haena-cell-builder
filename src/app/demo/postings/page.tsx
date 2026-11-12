@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { PostingListSkeleton } from "@/components/postings/page-skeletons";
 import { connection } from "next/server";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingList } from "@/components/postings/posting-list";
@@ -22,7 +23,7 @@ export default function DemoPostingsPage() {
   return (
     <PageBody>
       <PageTitle title="내 공고" />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="공고를 불러오는 중" />}>
+      <Suspense fallback={<PostingListSkeleton />}>
         <Postings />
       </Suspense>
     </PageBody>

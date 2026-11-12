@@ -72,6 +72,10 @@
     45% { transform: translateY(-6px) scale(1.02); opacity: 1; }
     100% { transform: translateY(0) scale(1); }
   }
+  /* 불러오는 중 뼈대 위로 빛이 지나간다 (D-63) */
+  @keyframes skeleton-shimmer {
+    100% { transform: translateX(100%); }
+  }
 }
 
 :root {

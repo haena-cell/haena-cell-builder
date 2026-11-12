@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { CalendarSkeleton } from "@/components/postings/page-skeletons";
 import { connection } from "next/server";
 import { PageBody, PageTitle } from "@/components/postings/page-title";
 import { PostingCalendar } from "@/components/postings/posting-calendar";
@@ -20,7 +21,7 @@ export default function DemoCalendarPage() {
   return (
     <PageBody>
       <PageTitle title="달력" />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="달력을 불러오는 중" />}>
+      <Suspense fallback={<CalendarSkeleton />}>
         <Calendar />
       </Suspense>
     </PageBody>

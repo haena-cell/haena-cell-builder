@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { PostingDetailSkeleton } from "@/components/postings/page-skeletons";
 import { connection } from "next/server";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ async function Detail({ params }: { params: Promise<{ id: string }> }) {
 export default function DemoPostingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
     <PageBody>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" />}>
+      <Suspense fallback={<PostingDetailSkeleton />}>
         <Detail params={params} />
       </Suspense>
     </PageBody>

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { HomeSkeleton } from "@/components/postings/page-skeletons";
 import { connection } from "next/server";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -22,7 +23,7 @@ export function LandingPreview() {
   return (
     <div className="group relative h-[420px] overflow-hidden rounded-2xl bg-background ring-1 ring-border md:h-[560px]">
       <div inert className="p-3 md:p-5">
-        <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-card" />}>
+        <Suspense fallback={<HomeSkeleton />}>
           <PreviewHome />
         </Suspense>
       </div>
