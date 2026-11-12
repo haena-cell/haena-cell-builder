@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { CalendarDays, ChevronDown, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePanel } from "@/components/date-time-picker";
 import type { ActionResult } from "@/lib/posting-actions";
 import { pushUndo } from "@/lib/undo";
 import { usePostingActions } from "@/components/postings/demo-context";
@@ -16,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 type Items = PrepItem[];
 
-// 마감 날짜: 누르면 바로 달력(브라우저 날짜 고르기)이 뜬다. 없으면 [마감일], 있으면 "D-3 | 11/5 (목)" 칩
+// 마감 날짜: 누르면 바로 달력이 뜬다(D-69, 브라우저 기본 창 대신). 없으면 [마감일], 있으면 "D-3 | 11/5 (목)" 칩
 function DueDate({
   value,
   done,
@@ -28,47 +30,46 @@ function DueDate({
   today: string;
   onChange: (value: string | null) => void;
 }) {
-  const picker = useRef<HTMLInputElement>(null);
-  const open = () => {
-    const el = picker.current;
-    if (!el) return;
-    try {
-      el.showPicker();
-    } catch {
-      el.focus();
-    }
-  };
-
+  const [open, setOpen] = useState(false);
   return (
     <span className="relative ml-auto flex shrink-0 items-center gap-0.5">
-      {/* 화면에 보이지 않는 날짜 칸: 달력만 띄우는 데 쓴다 */}
-      <input
-        ref={picker}
-        type="date"
-        aria-label="마감 날짜 고르기"
-        tabIndex={-1}
-        className="pointer-events-none absolute right-0 bottom-0 h-0 w-0 opacity-0"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || null)}
-      />
-      {value ? (
-        <>
-          <DueChip value={value} done={done} today={today} onClick={open} />
-          <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="마감 날짜 지우기" onClick={() => onChange(null)}>
-            <X />
-          </Button>
-        </>
-      ) : (
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={open}>
-          <CalendarDays data-icon="inline-start" />
-          마감일
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          {value ? (
+            <span>
+              {/* 눌림은 바깥 Popover 가 받는다 (버튼 모양·키보드 초점용으로 빈 onClick) */}
+              <DueChip value={value} done={done} today={today} onClick={() => {}} />
+            </span>
+          ) : (
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground">
+              <CalendarDays data-icon="inline-start" />
+              마감일
+            </Button>
+          )}
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-auto p-2">
+          <DatePanel
+            value={value ?? ""}
+            onPick={(key) => {
+              onChange(key);
+              setOpen(false);
+            }}
+            onClear={() => {
+              onChange(null);
+              setOpen(false);
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+      {value && (
+        <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="마감 날짜 지우기" onClick={() => onChange(null)}>
+          <X />
         </Button>
       )}
     </span>
   );
 }
 
-// 마감 날짜 칩. 3일 이내(D-3 ~ D-day)는 빨강, 지났거나 끝낸 일은 회색
 export function DueChip({ value, done, today, onClick }: { value: string; done: boolean; today: string; onClick?: () => void }) {
   const days = daysToDate(value, today);
   const className = cn(

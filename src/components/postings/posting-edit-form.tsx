@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker, TimePicker } from "@/components/date-time-picker";
 import { Label } from "@/components/ui/label";
 import { DocPicker, StepEditor, type StepItem } from "@/components/postings/posting-field-editors";
 import { Segmented } from "@/components/postings/segmented";
@@ -89,8 +90,8 @@ export function PostingEditForm({
         <Segmented label="마감 방식" value={deadlineKind} onChange={setDeadlineKind} options={DEADLINE_KINDS} />
         {deadlineKind === "date" && (
           <div className="grid grid-cols-2 gap-2">
-            <Input type="date" aria-label="마감 날짜" value={date} onChange={(e) => setDate(e.target.value)} />
-            <Input type="time" aria-label="마감 시각 (없으면 비워 두기)" value={time} onChange={(e) => setTime(e.target.value)} />
+            <DatePicker aria-label="마감 날짜" value={date} onChange={setDate} />
+            <TimePicker aria-label="마감 시각" value={time} onChange={setTime} />
           </div>
         )}
       </div>

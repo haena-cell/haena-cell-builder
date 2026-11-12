@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DatePicker, TimePicker } from "@/components/date-time-picker";
 import { Label } from "@/components/ui/label";
 import { DocPicker, newStepItem, StepEditor, type StepItem } from "@/components/postings/posting-field-editors";
 import { Segmented } from "@/components/postings/segmented";
@@ -356,12 +357,10 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
               {deadlineKind === "date" && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="date" aria-label="마감 날짜" className={cn(isUnsure("deadline") && "bg-card")} value={date}
-                      onChange={(e) => { setDate(e.target.value); touch("deadline"); }} />
-                    <Input type="time" aria-label="마감 시각 (없으면 비워 두기)" className={cn(isUnsure("deadline") && "bg-card")} value={time}
-                      onChange={(e) => setTime(e.target.value)} />
+                    <DatePicker aria-label="마감 날짜" value={date} onChange={(v) => { setDate(v); touch("deadline"); }} />
+                    <TimePicker aria-label="마감 시각" value={time} onChange={setTime} />
                   </div>
-                  <p className="px-1 text-xs text-muted-foreground">시각이 없으면 비워 두세요. 그날 23:59로 저장해요.</p>
+                  <p className="px-1 text-xs text-muted-foreground">시각이 없으면 [시각 없음]으로 두세요. 그날 23:59로 저장해요.</p>
                 </>
               )}
             </Field>
