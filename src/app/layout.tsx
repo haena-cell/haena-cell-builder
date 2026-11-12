@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { StandaloneTitle } from "@/components/standalone-title";
 import "./globals.css";
 
 const pretendard = localFont({
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className={`${pretendard.variable} ${outfit.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
+        <StandaloneTitle />
         <Toaster theme="light" mobileOffset={{ bottom: 88 }} />
       </body>
     </html>
