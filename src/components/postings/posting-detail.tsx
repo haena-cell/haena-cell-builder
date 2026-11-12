@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
-import { CalendarPlus, ChevronDown, Download, ExternalLink, Pencil, Trash2, Undo2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, Download, ExternalLink, FileText, Pencil, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { pushUndo } from "@/lib/undo";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,89 @@ const EDIT_FORM_ID = "posting-edit-form";
 
 // 다른 공고의 마감일: 상세의 마감 주 달력에 함께 보여 준다 (2026-11-12)
 export type OtherPostingDeadline = { id: string; company: string; date: string };
+
+// 메모 (2026-11-13 사용자 요청): 직무 설명·준비 메모. 쓰다 멈추면(1초) 또는 칸을 벗어나면 저장
+function MemoBox({ postingId, initial }: { postingId: string; initial: string }) {
+  const { updateMemo } = usePostingActions();
+  const [value, setValue] = useState(initial);
+  const [saved, setSaved] = useState(initial);
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  async function save() {
+    const text = value;
+    if (text === saved) return;
+    setState("saving");
+    const result = await updateMemo(postingId, text);
+    if (result.ok) {
+      setSaved(text);
+      setState("saved");
+    } else setState("error");
+  }
+
+  useEffect(() => {
+    if (value === saved) return;
+    const timer = setTimeout(save, 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 글이 바뀔 때만 다시 센다
+  }, [value]);
+
+  return (
+    <Section
+      title="메모"
+      aside={
+        <span className={cn("text-xs", state === "error" ? "text-destructive" : "text-muted-foreground")}>
+          {state === "saving" ? "저장 중…" : state === "saved" ? "저장했어요" : state === "error" ? "저장하지 못했어요" : null}
+        </span>
+      }
+    >
+      <Textarea
+        aria-label="메모"
+        value={value}
+        maxLength={5000}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        placeholder={"직무 설명, 준비할 것, 면접에서 물어볼 것 등을 자유롭게 적어 두세요"}
+        className="min-h-36 rounded-2xl"
+      />
+    </Section>
+  );
+}
+
+// 원문 보기 (위쪽 접힘 띠): 링크 · 붙여넣은 글. 캡처는 저장하지 않아서(D-08) 안내만
+function SourceToggle({ posting }: { posting: Posting }) {
+  const hasAny = posting.sourceUrl || posting.sourceText;
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-2xl bg-card ring-1 ring-border-subtle">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium md:px-6"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <FileText className="size-4 shrink-0 text-muted-foreground" />
+          원문 보기
+          {posting.sourceUrl && <span className="truncate font-normal text-muted-foreground">{posting.sourceUrl}</span>}
+        </span>
+        <ChevronDown className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+      <div className="flex flex-col gap-3 px-4 pb-4 text-sm md:px-6">
+        {posting.sourceUrl && (
+          <a href={posting.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 self-start underline underline-offset-2">
+            <span className="truncate">원래 공고 페이지 열기</span>
+            <ExternalLink className="size-3.5 shrink-0" />
+          </a>
+        )}
+        {posting.sourceText && (
+          <p className="max-h-96 overflow-y-auto rounded-xl bg-muted p-3 leading-relaxed whitespace-pre-wrap">{posting.sourceText}</p>
+        )}
+        {!hasAny && <p className="text-muted-foreground">캡처로 넣은 공고예요. 캡처는 저장하지 않아서 원문이 없어요.</p>}
+      </div>
+      )}
+    </div>
+  );
+}
 
 export function PostingDetail({
   initialPosting,
@@ -142,7 +226,7 @@ export function PostingDetail({
   return (
     <div className="flex flex-col gap-4">
       {/* 머리 */}
-      <PageTitle title={posting.company} description={posting.jobTitle} back={{ href: href("/app/postings"), label: "목록" }}>
+      <PageTitle title={posting.company} description={<span className="text-base text-foreground/70 lg:text-lg">{posting.jobTitle}</span>} back={{ href: href("/app/postings"), label: "목록" }}>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {posting.isSample && <Badge variant="warning">연습용 예시</Badge>}
           <DeadlineBadge posting={posting} daysLeft={daysLeftFor(posting, now)} />
@@ -177,6 +261,9 @@ export function PostingDetail({
         </div>
       </PageTitle>
 
+      {/* 원문: 위에서 바로 펼쳐 본다 (2026-11-13 사용자 요청) */}
+      <SourceToggle posting={posting} />
+
       {editing ? (
         <div className="grid items-start gap-4 lg:grid-cols-[3fr_2fr]">
           <Card className="min-w-0 px-4 md:px-6">
@@ -201,15 +288,18 @@ export function PostingDetail({
               }}
             />
           </Card>
-          <Section title="준비 항목" aside={<span className="text-xs text-muted-foreground">고치면 바로 저장돼요</span>}>
-            <PrepTodos
-              postingId={posting.id}
-              items={posting.prepItems}
-              today={kstDateKey(now)}
-              editMode
-              onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
-            />
-          </Section>
+          <div className="flex min-w-0 flex-col gap-4">
+            <Section title="준비 항목">
+              <PrepTodos
+                postingId={posting.id}
+                items={posting.prepItems}
+                today={kstDateKey(now)}
+                editMode
+                onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
+              />
+            </Section>
+            <MemoBox postingId={posting.id} initial={posting.memo ?? ""} />
+          </div>
         </div>
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -316,29 +406,7 @@ export function PostingDetail({
                 <dd>{posting.companySize ?? "—"}</dd>
                 <dt className="text-muted-foreground">제출 서류</dt>
                 <dd>{posting.requiredDocs.join(", ") || "—"}</dd>
-                <dt className="text-muted-foreground">원본</dt>
-                <dd className="min-w-0">
-                  {posting.sourceUrl ? (
-                    <a href={posting.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 underline underline-offset-2">
-                      <span className="truncate">{posting.sourceUrl}</span>
-                      <ExternalLink className="size-3.5 shrink-0" />
-                    </a>
-                  ) : posting.sourceText ? (
-                    "붙여넣은 글 (아래에서 펼쳐 보기)"
-                  ) : (
-                    "—"
-                  )}
-                </dd>
               </dl>
-              {posting.sourceText && (
-                <details className="group rounded-2xl bg-muted">
-                  <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-sm font-medium">
-                    붙여넣은 원문 보기
-                    <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                  </summary>
-                  <p className="max-h-96 overflow-y-auto px-4 pb-4 text-sm leading-relaxed whitespace-pre-wrap">{posting.sourceText}</p>
-                </details>
-              )}
             </Section>
           </div>
 
@@ -355,6 +423,7 @@ export function PostingDetail({
                 onItemsChange={(update) => setPosting((p) => ({ ...p, prepItems: update(p.prepItems) }))}
               />
             </Section>
+            <MemoBox postingId={posting.id} initial={posting.memo ?? ""} />
           </div>
         </div>
       )}

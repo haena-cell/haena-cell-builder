@@ -44,7 +44,7 @@ export function DocPicker({ value, onChange }: { value: string[]; onChange: (doc
           const on = value.includes(doc);
           return (
             <Button key={doc} type="button" variant="outline" size="sm" aria-pressed={on}
-              className={cn(on && "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background")}
+              className={cn(on ? "border-foreground bg-foreground text-background hover:bg-foreground/85 hover:text-background" : "text-foreground hover:bg-muted hover:text-foreground")}
               onClick={() => onChange(on ? value.filter((d) => d !== doc) : [...value, doc])}>
               {on && <Check data-icon="inline-start" />}
               {doc}

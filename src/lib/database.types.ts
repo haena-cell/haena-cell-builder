@@ -117,6 +117,7 @@ export type Database = {
           employment_type: string | null
           id: string
           is_sample: boolean
+          memo: string | null
           job_title: string
           location: string | null
           priority: string
@@ -140,6 +141,7 @@ export type Database = {
           employment_type?: string | null
           id?: string
           is_sample?: boolean
+          memo?: string | null
           job_title: string
           location?: string | null
           priority?: string
@@ -163,6 +165,7 @@ export type Database = {
           employment_type?: string | null
           id?: string
           is_sample?: boolean
+          memo?: string | null
           job_title?: string
           location?: string | null
           priority?: string

@@ -396,3 +396,11 @@ export async function updateFromNewRead(
   });
   return updatePostingFull(id, fields, items);
 }
+
+// 공고 메모 (2026-11-13): 직무 설명·메모. 비우면 null
+export async function updateMemo(id: string, memo: string): Promise<ActionResult> {
+  const text = memo.trim() ? memo.slice(0, 5000) : null;
+  const supabase = await createSupabaseServer();
+  const { data, error } = await supabase.from("postings").update({ memo: text }).eq("id", id).select("id");
+  return withRefresh(!error && data.length === 1 ? { ok: true } : { ok: false, message: FAILED });
+}

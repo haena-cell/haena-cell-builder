@@ -41,6 +41,7 @@ const demoActions = {
   addSubtask: okWithId,
   updateSubtask: ok,
   deleteSubtask: ok,
+  updateMemo: ok,
 } satisfies Partial<Record<keyof typeof realActions, unknown>>;
 
 type PostingActions = Pick<typeof realActions, keyof typeof demoActions>;

@@ -74,18 +74,18 @@ export function PostingEditForm({
   }
 
   return (
-    <form id={formId} onSubmit={submit} className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
+    <form id={formId} onSubmit={submit} className="flex flex-col gap-7">
+      <div className="grid gap-x-4 gap-y-6 md:grid-cols-2">
+        <div className="flex flex-col gap-2.5">
           <Label htmlFor={`edit-company-${posting.id}`}>기업명</Label>
           <Input id={`edit-company-${posting.id}`} value={company} maxLength={100} onChange={(e) => setCompany(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2.5">
           <Label htmlFor={`edit-job-${posting.id}`}>직무</Label>
           <Input id={`edit-job-${posting.id}`} value={jobTitle} maxLength={100} onChange={(e) => setJobTitle(e.target.value)} />
         </div>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         <Label>마감일</Label>
         <Segmented label="마감 방식" value={deadlineKind} onChange={setDeadlineKind} options={DEADLINE_KINDS} />
         {deadlineKind === "date" && (
@@ -95,25 +95,25 @@ export function PostingEditForm({
           </div>
         )}
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="flex flex-col gap-1.5">
+      <div className="grid gap-x-4 gap-y-6 md:grid-cols-3">
+        <div className="flex flex-col gap-2.5">
           <Label htmlFor={`edit-location-${posting.id}`}>근무지</Label>
           <Input id={`edit-location-${posting.id}`} value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2.5">
           <Label htmlFor={`edit-type-${posting.id}`}>근무 형태</Label>
           <Input id={`edit-type-${posting.id}`} value={employmentType} onChange={(e) => setEmploymentType(e.target.value)} />
         </div>
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2.5">
           <Label htmlFor={`edit-size-${posting.id}`}>기업 규모</Label>
           <Input id={`edit-size-${posting.id}`} value={companySize} onChange={(e) => setCompanySize(e.target.value)} />
         </div>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         <Label>제출 서류</Label>
         <DocPicker value={docs} onChange={setDocs} />
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         <Label>전형 절차</Label>
         <p className="text-xs text-muted-foreground">손잡이를 잡고 끌거나 화살표로 순서를 바꿔요. 지금 진행 중인 단계는 그대로 유지돼요.</p>
         <StepEditor items={steps} onChange={setSteps} />

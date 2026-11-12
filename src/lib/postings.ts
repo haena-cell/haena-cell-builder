@@ -39,6 +39,7 @@ export type Posting = {
   steps: PostingStep[];
   prepItems: PrepItem[];
   isSample: boolean;
+  memo?: string | null; // 직무 설명·메모 (2026-11-13)
   priority: Priority;
 };
 

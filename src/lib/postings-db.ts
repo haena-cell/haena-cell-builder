@@ -43,6 +43,7 @@ function toPosting(row: Row): Posting {
         .map((t) => ({ id: t.id, label: t.label, done: t.done, dueDate: t.due_date })),
     })),
     isSample: row.is_sample,
+    memo: row.memo,
     priority: row.priority as Posting["priority"],
   };
 }
