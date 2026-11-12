@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpDown, ChevronDown, Flag, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2, X } from "lucide-react";
@@ -101,8 +101,11 @@ function formatShortDeadline(posting: Posting) {
   if (posting.deadlineKind === "rolling") return "상시";
   if (posting.deadlineKind === "until_filled") return "채용 시";
   if (!posting.deadlineAt) return "—";
-  const key = kstDateKey(new Date(posting.deadlineAt));
-  return `${Number(key.slice(5, 7))}월 ${Number(key.slice(8))}일`;
+  // "26.11.20 (금)" — 연도까지 (D-73)
+  const at = new Date(posting.deadlineAt);
+  const key = kstDateKey(at);
+  const weekday = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", weekday: "short" }).format(at);
+  return `${key.slice(2, 4)}.${key.slice(5, 7)}.${key.slice(8)} (${weekday})`;
 }
 
 // 걸러 보기 드롭다운 (여러 개 고르기, 아무것도 안 고르면 전체)
@@ -472,7 +475,21 @@ export function PostingList({
       return (daysOf(b) ?? 0) - (daysOf(a) ?? 0);
     },
   };
-  const rows = filtered.filter((p) => tab === "all" || statusById[p.id] === tab).sort(compare[sort]);
+  const sortedRows = filtered.filter((p) => tab === "all" || statusById[p.id] === tab).sort(compare[sort]);
+  // 시기 구분 띠 (D-73): 최근 시기가 위, 마감일 없는 공고는 맨 아래. 띠 안에서는 고른 정렬 그대로. 최신순은 띠 없이
+  const grouped = sort !== "newest";
+  const periodKey = (p: Posting) => periodOf(p) ?? "";
+  const rows = grouped
+    ? [...sortedRows].sort((a, b) => {
+        const ka = periodKey(a);
+        const kb = periodKey(b);
+        if (ka === kb) return 0;
+        if (!ka) return 1;
+        if (!kb) return -1;
+        return ka < kb ? 1 : -1;
+      })
+    : sortedRows;
+  const periodTitle = (key: string) => (key ? `${key.slice(0, 4)}년 ${key.endsWith("상") ? "상반기" : "하반기"}` : "마감일 없음");
   const filtering = priorityFilter.length > 0 || typeFilter.length > 0;
   const selectedRows = rows.filter((p) => selected.has(p.id));
   const allSelected = rows.length > 0 && selectedRows.length === rows.length;
@@ -743,12 +760,24 @@ export function PostingList({
             const step = current === -1 ? null : posting.steps[current];
             const days = allDaysLeft[posting.id] ?? null;
             const priority = PRIORITIES.find((p) => p.value === posting.priority) ?? PRIORITIES[1];
-            // 끝낸 단계 없이 마감이 지난 공고는 흐리게 (D-44·D-46)
-            const missed = days !== null && days < 0 && posting.steps.every((s) => s.completedAt === null);
-            const dim = missed && "opacity-50";
+            // 마감이 지난 공고는 진행 여부와 상관없이 흐리게 (D-73, D-44·D-46 을 넓힘)
+            const dim = days !== null && days < 0 && "opacity-45";
             const isSelected = selected.has(posting.id);
             const previous = previousApplication(posting, postings);
+            // 시기가 바뀌는 첫 줄 위에 구분 띠
+            const key = periodKey(posting);
+            const band = grouped && (index === 0 || periodKey(rows[index - 1]) !== key);
+            const inGroup = band ? rows.filter((r) => periodKey(r) === key) : [];
+            const groupPast = inGroup.length > 0 && inGroup.every((r) => (allDaysLeft[r.id] ?? 0) < 0) && key !== "";
             return (
+              <Fragment key={posting.id}>
+              {band && (
+                <li role="presentation" className="flex items-center gap-2.5 bg-card px-3 pt-5 pb-2 text-xs text-muted-foreground md:px-6 lg:pl-12">
+                  <span className="text-[13px] font-semibold text-foreground">{periodTitle(key)}</span>
+                  <span className="tabular-nums">{inGroup.length}개{groupPast && " · 마감 지남"}</span>
+                  <span aria-hidden className="h-px flex-1 bg-border" />
+                </li>
+              )}
               <li
                 key={posting.id}
                 onPointerDown={(e) => onRowPointerDown(e, index)}
@@ -868,6 +897,7 @@ export function PostingList({
                   </div>
                 </div>
               </li>
+              </Fragment>
             );
           })}
         </ul>
