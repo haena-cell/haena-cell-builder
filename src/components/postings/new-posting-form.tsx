@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, ClipboardPaste, ImageUp, Link2, Loader2, Lock, Sparkles, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardPaste, Copy, ImageUp, Layers, Link2, Loader2, Lock, Plus, Sparkles, X, XCircle } from "lucide-react";
 import { ExtractProgress } from "@/components/postings/extract-progress";
 import { Mascot } from "@/components/mascot";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/postings/segmented";
 import type { ExtractInput, ExtractResult } from "@/lib/extract-posting";
 import { findSavedByLink, type PostingSummary } from "@/lib/posting-actions";
-import { saveDraft, type DraftSource } from "@/lib/practice-store";
+import { saveDraft, saveQueue, type Draft, type DraftSource } from "@/lib/practice-store";
 
-type Mode = "link" | "text" | "image";
+type Mode = "link" | "text" | "image" | "multi";
+
+// 여러 개 한 번에 (D-67): 링크·캡처를 합쳐 최대 5개, 2개씩 동시에 읽는다
+const MAX_MULTI = 5;
+const MULTI_AT_ONCE = 2;
+type MultiImage = { id: string; dataUrl: string; preview: string };
+type JobStatus = "wait" | "reading" | "ok" | "saved" | "fail";
+type Job = { key: string; label: string; status: JobStatus; message?: string; existing?: PostingSummary; draft?: Draft };
+
+const linksIn = (raw: string) => [...new Set(raw.split(/\s+/).map((t) => t.trim()).filter((t) => /^https?:\/\/\S+$/i.test(t)))];
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
 
 // 휴대폰 캡처는 크기가 커서 브라우저에서 긴 변 1600px JPEG로 줄인 뒤 보낸다
 async function resizeImage(file: File, maxSide = 1600) {
@@ -43,7 +60,112 @@ export function NewPostingForm() {
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
   const [saved, setSaved] = useState<PostingSummary | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const multiFileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  // 여러 개 한 번에 (D-67)
+  const [multiLinks, setMultiLinks] = useState("");
+  const [multiImages, setMultiImages] = useState<MultiImage[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const multiUrls = linksIn(multiLinks);
+  const multiTotal = multiUrls.length + multiImages.length;
+  const multiRunning = jobs.some((j) => j.status === "wait" || j.status === "reading");
+  const readyDrafts = jobs.filter((j) => j.status === "ok" && j.draft).map((j) => j.draft!);
+
+  async function addMultiFiles(files: FileList | File[] | null) {
+    if (!files) return;
+    setError(null);
+    const room = MAX_MULTI - multiTotal;
+    const picked = [...files].slice(0, Math.max(0, room));
+    if (files.length > room) setError(`한 번에 ${MAX_MULTI}개까지 넣을 수 있어요.`);
+    try {
+      const added = await Promise.all(
+        // AI 로 보낼 캡처(긴 변 1600px)와 확인 화면용 작은 미리보기(800px)를 따로 만든다
+        picked.map(async (file) => ({ id: crypto.randomUUID(), dataUrl: await resizeImage(file), preview: await resizeImage(file, 800) })),
+      );
+      setMultiImages((prev) => [...prev, ...added]);
+    } catch {
+      setError("열 수 없는 이미지가 있어요. 다른 캡처를 골라 주세요.");
+    }
+  }
+
+  // 공고 하나 읽기 → 상태를 Job 으로 돌려준다 (하나 넣기와 같은 규칙: 이미 저장한 링크는 정리하지 않는다)
+  async function readOne(input: ExtractInput, source: DraftSource): Promise<Omit<Job, "key" | "label">> {
+    try {
+      if (input.kind === "link") {
+        const existing = await findSavedByLink(input.url);
+        if (existing) return { status: "saved", existing };
+      }
+      const res = await fetch("/api/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+      const data = (await res.json()) as ExtractResult & { error?: string };
+      if (!res.ok) return { status: "fail", message: data.error ?? "정리하지 못했어요." };
+      if (data.status === "need_fallback") return { status: "fail", message: "이 사이트는 바로 읽을 수 없어요. 글 붙여넣기·캡처로 따로 넣어 주세요." };
+      if (data.status !== "ok") return { status: "fail", message: "정리하지 못했어요." };
+      return {
+        status: "ok",
+        draft: { posting: data.posting, isExample: data.isExample, source, hint: data.hint },
+      };
+    } catch {
+      return { status: "fail", message: "인터넷 연결을 확인해 주세요." };
+    }
+  }
+
+  async function runMulti() {
+    if (multiTotal === 0 || multiTotal > MAX_MULTI) return;
+    setError(null);
+    const tasks: { key: string; label: string; input: ExtractInput; source: DraftSource }[] = [
+      ...multiUrls.map((url) => ({ key: url, label: hostOf(url), input: { kind: "link", url } as ExtractInput, source: { kind: "link", url } as DraftSource })),
+      ...multiImages.map((img, i) => ({
+        key: img.id,
+        label: `캡처 ${i + 1}`,
+        input: { kind: "image", dataUrl: img.dataUrl } as ExtractInput,
+        source: { kind: "image", previewDataUrl: img.preview } as DraftSource,
+      })),
+    ];
+    setJobs(tasks.map((t) => ({ key: t.key, label: t.label, status: "wait" })));
+    const patch = (key: string, change: Partial<Job>) => setJobs((prev) => prev.map((j) => (j.key === key ? { ...j, ...change } : j)));
+    let next = 0;
+    async function worker() {
+      while (next < tasks.length) {
+        const task = tasks[next++];
+        patch(task.key, { status: "reading" });
+        patch(task.key, await readOne(task.input, task.source));
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(MULTI_AT_ONCE, tasks.length) }, worker));
+  }
+
+  // 캡처를 끌어다 놓기 (2026-11-12 사용자 요청): 1장이면 [캡처], 여러 장이면 [여러 개]로 넣는다
+  const [dropping, setDropping] = useState(false);
+  const hasFiles = (e: React.DragEvent) => e.dataTransfer.types.includes("Files");
+  function onDrop(e: React.DragEvent) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    setDropping(false);
+    if (loading || multiRunning) return;
+    const files = [...e.dataTransfer.files].filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) return setError("이미지 파일만 넣을 수 있어요.");
+    setJobs([]);
+    if (mode === "multi" || files.length > 1) {
+      setMode("multi");
+      addMultiFiles(files);
+    } else {
+      setMode("image");
+      handleFile(files[0]);
+    }
+  }
+
+  function reviewAll() {
+    if (readyDrafts.length === 0) return;
+    if (!saveQueue(readyDrafts)) {
+      setError("정리 결과가 너무 커서 옮기지 못했어요. 캡처 수를 줄여 다시 시도해 주세요.");
+      return;
+    }
+    setMultiLinks("");
+    setMultiImages([]);
+    setJobs([]);
+    setMode("link");
+    router.push("/app/new/review");
+  }
 
   // 글·캡처로 넣을 때 링크 칸에 남아 있는 링크 (함께 저장)
   const linkToKeep = /^https?:\/\/\S+$/i.test(url.trim()) ? url.trim() : "";
@@ -173,19 +295,46 @@ export function NewPostingForm() {
     return () => window.removeEventListener(INCOMING_EVENT, consume);
   }, []);
 
-  const canSubmit = mode === "link" ? !!url.trim() : mode === "text" ? !!text.trim() : !!image;
+  const canSubmit =
+    mode === "multi"
+      ? multiTotal > 0 && multiTotal <= MAX_MULTI && jobs.length === 0 // 한 번 정리한 뒤에는 링크·캡처를 바꿔야 다시 정리(비용 두 번 방지)
+      : mode === "link"
+        ? !!url.trim()
+        : mode === "text"
+          ? !!text.trim()
+          : !!image;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div
+      className="relative flex flex-col gap-5"
+      onDragEnter={(e) => hasFiles(e) && setDropping(true)}
+      onDragOver={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+      }}
+      onDrop={onDrop}
+    >
+      {dropping && (
+        <div className="pointer-events-none absolute -inset-2 z-30 flex flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-primary bg-primary-soft/90 text-primary-strong">
+          <ImageUp className="size-8" />
+          <p className="font-semibold">여기에 놓으면 캡처로 넣어요</p>
+          <p className="text-xs">여러 장이면 한 번에 {MAX_MULTI}개까지</p>
+        </div>
+      )}
       <Segmented
         label="넣는 방법"
         value={mode}
         onChange={switchMode}
-        disabled={loading}
+        disabled={loading || multiRunning}
         options={[
           { value: "link", label: "링크", icon: Link2 },
           { value: "text", label: "글 붙여넣기", icon: ClipboardPaste },
           { value: "image", label: "캡처", icon: ImageUp },
+          { value: "multi", label: "여러 개", icon: Layers },
         ]}
       />
 
@@ -200,7 +349,9 @@ export function NewPostingForm() {
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSubmit) submit(mode);
+          if (!canSubmit) return;
+          if (mode === "multi") runMulti();
+          else submit(mode);
         }}
       >
         {mode === "link" && (
@@ -228,7 +379,60 @@ export function NewPostingForm() {
           </div>
         )}
 
-        {mode !== "link" && linkToKeep && (
+        {mode === "multi" && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
+              <Label htmlFor="multi-links" className="px-1">채용 공고 링크 <span className="font-normal text-muted-foreground">(한 줄에 하나씩)</span></Label>
+              <Textarea
+                id="multi-links"
+                placeholder={"https://www.saramin.co.kr/…\nhttps://www.wanted.co.kr/…"}
+                value={multiLinks}
+                onChange={(e) => { setMultiLinks(e.target.value); setJobs([]); }}
+                disabled={multiRunning}
+                className="min-h-28 rounded-2xl"
+              />
+            </div>
+            <div className="flex flex-col gap-3">
+              <span className="px-1 text-sm font-medium">공고 캡처 <span className="font-normal text-muted-foreground">(눌러서 고르거나 끌어다 놓기)</span></span>
+              <input ref={multiFileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addMultiFiles(e.target.files); e.target.value = ""; setJobs([]); }} />
+              <div className="flex flex-wrap gap-2">
+                {multiImages.map((img, i) => (
+                  <div key={img.id} className="relative size-20 overflow-hidden rounded-xl bg-muted ring-1 ring-border">
+                    {/* 기기 안에서만 보여 주는 미리보기 */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.preview} alt={`캡처 ${i + 1}`} className="size-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label={`캡처 ${i + 1} 빼기`}
+                      disabled={multiRunning}
+                      onClick={() => { setMultiImages((prev) => prev.filter((m) => m.id !== img.id)); setJobs([]); }}
+                      className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-foreground/70 text-background hover:bg-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {multiTotal < MAX_MULTI && (
+                  <button
+                    type="button"
+                    onClick={() => multiFileRef.current?.click()}
+                    disabled={multiRunning}
+                    className="flex size-20 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-input bg-muted/50 text-xs text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    <Plus className="size-4 text-foreground" />
+                    캡처 추가
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className={cn("px-1 text-xs", multiTotal > MAX_MULTI ? "text-destructive" : "text-muted-foreground")}>
+              링크 {multiUrls.length}개 · 캡처 {multiImages.length}장 — 합쳐서 <span className="font-semibold tabular-nums">{multiTotal} / {MAX_MULTI}</span>개
+              {multiTotal > MAX_MULTI && " · 5개까지만 넣어 주세요"}
+            </p>
+          </div>
+        )}
+
+        {mode !== "link" && mode !== "multi" && linkToKeep && (
           <div className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm">
             <Link2 className="size-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1">
@@ -290,7 +494,7 @@ export function NewPostingForm() {
                   <ImageUp className="size-5 text-foreground" />
                 </span>
                 <span className="font-medium text-foreground">공고 캡처 고르기</span>
-                <span className="text-xs">휴대폰 사진첩이나 컴퓨터의 캡처 이미지</span>
+                <span className="text-xs">눌러서 고르거나 캡처를 여기로 끌어다 놓으세요</span>
               </button>
             )}
           </div>
@@ -303,12 +507,59 @@ export function NewPostingForm() {
           className="h-12 w-full bg-foreground text-base text-background hover:bg-primary hover:text-primary-foreground"
           disabled={loading || !canSubmit}
         >
-          {loading ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
-          {loading ? "정리하는 중…" : "정리하기"}
+          {loading || multiRunning ? <Loader2 className="animate-spin" /> : <Sparkles data-icon="inline-start" />}
+          {loading || multiRunning ? "정리하는 중…" : mode === "multi" && multiTotal > 0 ? `${Math.min(multiTotal, MAX_MULTI)}개 정리하기` : "정리하기"}
         </Button>
       </form>
 
       {loading && <ExtractProgress />}
+
+      {/* 여러 개: 공고마다 진행 상태 (D-67) */}
+      {mode === "multi" && jobs.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <ul className="flex flex-col gap-2" aria-live="polite">
+            {jobs.map((job) => (
+              <li key={job.key} className="flex items-center gap-3 rounded-2xl bg-muted px-4 py-3 text-sm">
+                {job.status === "reading" || job.status === "wait" ? (
+                  <Loader2 className={cn("size-4 shrink-0 text-muted-foreground", job.status === "reading" && "animate-spin")} />
+                ) : job.status === "ok" ? (
+                  <CheckCircle2 className="size-4 shrink-0 text-success-foreground" />
+                ) : job.status === "saved" ? (
+                  <Copy className="size-4 shrink-0 text-warning-foreground" />
+                ) : (
+                  <XCircle className="size-4 shrink-0 text-destructive" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">
+                    {job.status === "ok" && job.draft ? `${job.draft.posting.company || "기업명 없음"} · ${job.draft.posting.jobTitle || "직무 없음"}` : job.label}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {job.status === "wait" && "기다리는 중"}
+                    {job.status === "reading" && "읽는 중…"}
+                    {job.status === "ok" && `${job.label}에서 정리했어요`}
+                    {job.status === "saved" && `이미 저장한 공고예요 · ${job.existing?.company ?? ""}`}
+                    {job.status === "fail" && job.message}
+                  </p>
+                </div>
+                {job.status === "saved" && job.existing && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/app/postings/${job.existing.id}`}>그 공고 보기</Link>
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {!multiRunning && (
+            readyDrafts.length > 0 ? (
+              <Button type="button" size="lg" className="h-12 w-full text-base" onClick={reviewAll}>
+                하나씩 확인하기 ({readyDrafts.length}개)
+              </Button>
+            ) : (
+              <p className="px-1 text-sm text-muted-foreground">확인할 공고가 없어요. 링크·캡처를 바꿔 다시 정리해 보세요.</p>
+            )
+          )}
+        </div>
+      )}
       {error && (
         <div className="flex items-center gap-3 rounded-2xl bg-destructive-soft px-4 py-3" role="alert">
           <Mascot pose="understand" size={48} hop />

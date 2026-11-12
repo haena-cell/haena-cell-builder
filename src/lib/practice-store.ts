@@ -45,6 +45,22 @@ function remove(key: string) {
   }
 }
 
-export const saveDraft = (draft: Draft) => write(DRAFT_KEY, { ...draft, id: crypto.randomUUID() });
+// 하나만 넣을 때. 여러 개 확인 중이던 줄은 비운다
+export const saveDraft = (draft: Draft) => {
+  remove(QUEUE_KEY);
+  return write(DRAFT_KEY, { ...draft, id: crypto.randomUUID() });
+};
 export const loadDraft = () => read<Draft>(DRAFT_KEY);
 export const clearDraft = () => remove(DRAFT_KEY);
+
+// 여러 개 한 번에 넣기 (D-67): 정리된 공고들을 순서대로 하나씩 확인한다. index = 지금 확인할 차례
+export type DraftQueue = { drafts: Draft[]; index: number; savedIds: string[] };
+const QUEUE_KEY = "practice:queue";
+
+export const saveQueue = (drafts: Draft[]) => {
+  remove(DRAFT_KEY);
+  return write(QUEUE_KEY, { drafts: drafts.map((d) => ({ ...d, id: crypto.randomUUID() })), index: 0, savedIds: [] } satisfies DraftQueue);
+};
+export const loadQueue = () => read<DraftQueue>(QUEUE_KEY);
+export const updateQueue = (queue: DraftQueue) => write(QUEUE_KEY, queue);
+export const clearQueue = () => remove(QUEUE_KEY);

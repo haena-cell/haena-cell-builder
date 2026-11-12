@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ChevronDown, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import { Segmented } from "@/components/postings/segmented";
 import { cn } from "@/lib/utils";
 import type { DeadlineKind } from "@/lib/postings";
 import { createPosting, findSimilarPostings, type PostingSummary } from "@/lib/posting-actions";
-import { clearDraft, loadDraft, type Draft } from "@/lib/practice-store";
+import { clearDraft, clearQueue, loadDraft, loadQueue, updateQueue, type Draft, type DraftQueue } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
 const DEFAULT_STEPS = ["서류 제출", "서류 결과", "면접", "최종 결과"];
@@ -81,7 +82,10 @@ function Panel({ title, aside, children }: { title: string; aside?: React.ReactN
 
 const SOURCE_LABEL = { link: "링크", text: "붙여넣은 글", image: "캡처" } as const;
 
-function ReviewFormInner({ draft }: { draft: Draft }) {
+// 여러 개 확인 중일 때 (D-67): 몇 번째인지, 저장·건너뛰기 뒤 다음으로
+type QueueStep = { position: number; total: number; next: (savedId: string | null) => void };
+
+function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) {
   const router = useRouter();
   const p = draft.posting;
   const initialDeadline = toKstParts(p.deadlineAt, p.deadlineTimeKnown);
@@ -155,6 +159,7 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
         setExistingId(result.existingId ?? null);
         return;
       }
+      if (queue) return queue.next(result.id);
       clearDraft();
       router.push(`/app/postings?saved=${result.id}`);
     });
@@ -173,6 +178,11 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
       {/* 머리: 무엇을 정리했는지 한눈에 */}
       <Card className="gap-4 px-4 md:px-6">
         <div className="flex flex-wrap items-center gap-1.5">
+          {queue && (
+            <Badge variant="default" className="tabular-nums">
+              {queue.position} / {queue.total}
+            </Badge>
+          )}
           <Badge variant="secondary">{draft.source.kind === "link" && draft.source.viaExtension ? "확장 프로그램" : SOURCE_LABEL[draft.source.kind]}에서 정리</Badge>
           {unsureCount > 0 ? (
             <Badge variant="warning">확인할 칸 {unsureCount}개</Badge>
@@ -344,11 +354,23 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
 
       {/* 화면 아래 떠 있는 저장 바 */}
       <div className="sticky bottom-4 z-10 mx-auto flex w-full max-w-md gap-2 rounded-2xl bg-card p-2 shadow-soft ring-1 ring-border">
-        <Button type="button" variant="ghost" size="lg" className="h-11 px-4" asChild>
-          <Link href="/app/new">처음부터</Link>
-        </Button>
+        {queue ? (
+          <Button type="button" variant="ghost" size="lg" className="h-11 px-4" disabled={saving} onClick={() => queue.next(null)}>
+            건너뛰기
+          </Button>
+        ) : (
+          <Button type="button" variant="ghost" size="lg" className="h-11 px-4" asChild>
+            <Link href="/app/new">처음부터</Link>
+          </Button>
+        )}
         <Button type="submit" size="lg" className="h-11 flex-1" disabled={saving}>
-          {saving ? "저장 중…" : showSimilar ? "그래도 저장" : "저장"}
+          {saving
+            ? "저장 중…"
+            : showSimilar
+              ? "그래도 저장"
+              : queue && queue.position < queue.total
+                ? "저장하고 다음 공고"
+                : "저장"}
         </Button>
       </div>
     </form>
@@ -357,14 +379,34 @@ function ReviewFormInner({ draft }: { draft: Draft }) {
 
 // 한 줄 입력 + [+] (Enter 로도 추가)
 export function ReviewForm() {
-  // 정리 결과는 이 탭 안에만 있으므로 브라우저에서 읽는다
-  const [draft, setDraft] = useState<Draft | null | undefined>(undefined);
+  const router = useRouter();
+  // 정리 결과는 이 탭 안에만 있으므로 브라우저에서 읽는다. 여러 개 확인 중이면 그 줄이 먼저 (D-67)
+  const [state, setState] = useState<{ draft: Draft | null; queue: DraftQueue | null } | undefined>(undefined);
   useEffect(() => {
+    const queue = loadQueue();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다
-    setDraft(loadDraft());
+    setState(queue && queue.index < queue.drafts.length ? { draft: queue.drafts[queue.index], queue } : { draft: loadDraft(), queue: null });
   }, []);
 
-  if (draft === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="불러오는 중" />;
+  // 저장(savedId) 또는 건너뛰기(null) 뒤 다음 공고로. 마지막이면 목록으로
+  function next(queue: DraftQueue, savedId: string | null) {
+    const savedIds = savedId ? [...queue.savedIds, savedId] : queue.savedIds;
+    const index = queue.index + 1;
+    if (index >= queue.drafts.length) {
+      clearQueue();
+      toast(savedIds.length > 0 ? `${savedIds.length}개 공고를 저장했어요` : "저장한 공고가 없어요");
+      router.push(savedIds.length > 0 ? `/app/postings?saved=${savedIds[savedIds.length - 1]}` : "/app/postings");
+      return;
+    }
+    const nextQueue = { ...queue, index, savedIds };
+    updateQueue(nextQueue);
+    if (savedId) toast(`저장했어요 · 다음 공고 (${index + 1} / ${queue.drafts.length})`);
+    setState({ draft: nextQueue.drafts[index], queue: nextQueue });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  if (state === undefined) return <div className="h-96 animate-pulse rounded-2xl bg-card" aria-label="불러오는 중" />;
+  const { draft, queue } = state;
   if (draft === null) {
     return (
       <Card className="items-start px-6">
@@ -377,5 +419,11 @@ export function ReviewForm() {
     );
   }
   // 화면을 떠나도 Next 가 이 화면을 숨겨 두기만 해서(Activity) 이전 결과가 남는다 → 새 정리 결과면 처음부터 다시 그린다
-  return <ReviewFormInner key={draft.id ?? "draft"} draft={draft} />;
+  return (
+    <ReviewFormInner
+      key={draft.id ?? "draft"}
+      draft={draft}
+      queue={queue ? { position: queue.index + 1, total: queue.drafts.length, next: (id) => next(queue, id) } : undefined}
+    />
+  );
 }
