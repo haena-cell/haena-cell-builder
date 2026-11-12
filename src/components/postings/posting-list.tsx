@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Flag, ListFilter, MoreHorizontal, Pencil, Trash2, Undo2, X } from "lucide-react";
 import { toast } from "sonner";
 import { pushUndo } from "@/lib/undo";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,20 @@ function statusOf(posting: Posting, days: number | null): Status {
 }
 
 const STATUS_ORDER: Status[] = ["urgent", "upcoming", "inProgress", "past"];
+
+// 정렬 (D-65): 걸러 보기와 따로. 고른 정렬은 이 브라우저에 기억
+type Sort = "status" | "newest" | "priority" | "deadlineSoon" | "deadlineLate";
+const SORTS: { value: Sort; label: string }[] = [
+  { value: "status", label: "상태순" },
+  { value: "newest", label: "최신순" },
+  { value: "priority", label: "우선순위순" },
+  { value: "deadlineSoon", label: "마감 임박순" },
+  { value: "deadlineLate", label: "마감 늦은순" },
+];
+const SORT_KEY = "hurdle.postings.sort";
+const PRIORITY_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+// 마감 정렬에서 묶음 순서: 마감 전(남은 날 있음) → 상시·채용 시 마감 → 마감 지남
+const deadlineGroup = (days: number | null) => (days === null ? 1 : days < 0 ? 2 : 0);
 const PRIORITY_CHIP: Record<Priority, string> = {
   high: "bg-due text-due-foreground",
   medium: "bg-secondary text-foreground/70",
@@ -231,6 +245,68 @@ export function PostingList({
   const [editing, setEditing] = useState<Posting | null>(null);
   const [deleting, setDeleting] = useState<Posting | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [sort, setSort] = useState<Sort>("status");
+  // 여러 공고 고르기 (D-66): 드래그·체크로 고른 공고 id
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [dragging, setDragging] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const drag = useRef<{ start: number; base: Set<string>; active: boolean } | null>(null);
+  const suppressClick = useRef(false);
+
+  // 고른 정렬은 이 브라우저에 기억 (D-65)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SORT_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 브라우저 저장소는 화면을 그린 뒤에만 읽을 수 있다
+      if (SORTS.some((o) => o.value === saved)) setSort(saved as Sort);
+    } catch {
+      // 저장소를 못 쓰면 기본 정렬
+    }
+  }, []);
+
+  function changeSort(next: Sort) {
+    setSort(next);
+    try {
+      localStorage.setItem(SORT_KEY, next);
+    } catch {
+      // 무시
+    }
+  }
+
+  // 드래그를 마치면 끝. 끌고 난 뒤 떨어진 자리의 줄이 눌린 것으로 처리되지 않게 잠깐 막는다
+  useEffect(() => {
+    function onUp() {
+      if (drag.current?.active) {
+        suppressClick.current = true;
+        setTimeout(() => (suppressClick.current = false), 0);
+      }
+      drag.current = null;
+      setDragging(false);
+    }
+    window.addEventListener("pointerup", onUp);
+    return () => window.removeEventListener("pointerup", onUp);
+  }, []);
+
+  // Esc 로 고른 것 해제
+  const hasSelection = selected.size > 0;
+  useEffect(() => {
+    if (!hasSelection) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !document.querySelector("[role=dialog],[role=alertdialog],[role=menu]")) setSelected(new Set());
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hasSelection]);
+
+  const clearSelection = () => setSelected(new Set());
+  const toggleSelected = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // 확인 화면에서 방금 저장한 공고(?saved=번호)를 알리고 잠깐 강조한다
   useEffect(() => {
@@ -343,15 +419,115 @@ export function PostingList({
     .filter((p) => priorityFilter.length === 0 || priorityFilter.includes(p.priority))
     .filter((p) => typeFilter.length === 0 || typeFilter.includes(typeOf(p)));
   const count = (s: Status | "all") => (s === "all" ? filtered.length : filtered.filter((p) => statusById[p.id] === s).length);
-  // 상태 순서(마감 임박 → … → 지난 공고) 안에서 마감이 빠른 순, 날짜 없는 공고는 뒤로
-  const rows = filtered
-    .filter((p) => tab === "all" || statusById[p.id] === tab)
-    .sort(
-      (a, b) =>
-        STATUS_ORDER.indexOf(statusById[a.id]) - STATUS_ORDER.indexOf(statusById[b.id]) ||
-        (allDaysLeft[a.id] ?? Infinity) - (allDaysLeft[b.id] ?? Infinity),
-    );
+  const daysOf = (p: Posting) => allDaysLeft[p.id] ?? null;
+  const soonFirst = (a: Posting, b: Posting) => (daysOf(a) ?? Infinity) - (daysOf(b) ?? Infinity);
+  const addedOrder = new Map(postings.map((p, i) => [p.id, i])); // 넣은 순서 (DB 에서 넣은 시각 순으로 온다)
+  const compare: Record<Sort, (a: Posting, b: Posting) => number> = {
+    // 상태 순서(마감 임박 → … → 지난 공고) 안에서 마감이 빠른 순, 날짜 없는 공고는 뒤로
+    status: (a, b) => STATUS_ORDER.indexOf(statusById[a.id]) - STATUS_ORDER.indexOf(statusById[b.id]) || soonFirst(a, b),
+    newest: (a, b) => (addedOrder.get(b.id) ?? 0) - (addedOrder.get(a.id) ?? 0),
+    priority: (a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || soonFirst(a, b),
+    deadlineSoon: (a, b) => {
+      const ga = deadlineGroup(daysOf(a));
+      const gb = deadlineGroup(daysOf(b));
+      if (ga !== gb) return ga - gb;
+      return ga === 2 ? (daysOf(b) ?? 0) - (daysOf(a) ?? 0) : soonFirst(a, b); // 지난 공고는 최근에 지난 것부터
+    },
+    deadlineLate: (a, b) => {
+      const ga = deadlineGroup(daysOf(a));
+      const gb = deadlineGroup(daysOf(b));
+      if (ga !== gb) return ga - gb;
+      return (daysOf(b) ?? 0) - (daysOf(a) ?? 0);
+    },
+  };
+  const rows = filtered.filter((p) => tab === "all" || statusById[p.id] === tab).sort(compare[sort]);
   const filtering = priorityFilter.length > 0 || typeFilter.length > 0;
+  const selectedRows = rows.filter((p) => selected.has(p.id));
+  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
+
+  // ── 드래그로 여러 줄 고르기 (D-66) ─────────────────────────
+  function onRowPointerDown(e: React.PointerEvent, index: number) {
+    if (e.pointerType !== "mouse" || e.button !== 0) return;
+    if (!window.matchMedia("(min-width: 1024px)").matches) return; // 컴퓨터 화면만
+    if ((e.target as HTMLElement).closest("button, input, [role=menuitem]")) return;
+    const keep = e.metaKey || e.ctrlKey || e.shiftKey;
+    drag.current = { start: index, base: keep ? new Set(selected) : new Set(), active: false };
+  }
+  function onRowPointerEnter(index: number) {
+    const d = drag.current;
+    if (!d || (!d.active && index === d.start)) return;
+    if (!d.active) {
+      d.active = true;
+      window.getSelection()?.removeAllRanges();
+      setDragging(true);
+    }
+    const next = new Set(d.base);
+    for (let i = Math.min(d.start, index); i <= Math.max(d.start, index); i++) next.add(rows[i].id);
+    setSelected(next);
+  }
+
+  // ── 고른 공고 한꺼번에 바꾸기 (D-66) ───────────────────────
+  async function bulkMeta(meta: { priority?: Priority; employmentType?: string | null }, label: string) {
+    const targets = selectedRows;
+    const field = meta.priority !== undefined ? "priority" : "employmentType";
+    const backOf = (p: Posting) => (field === "priority" ? { priority: p.priority } : { employmentType: p.employmentType });
+    const ids = new Set(targets.map((p) => p.id));
+    setBulkBusy(true);
+    setPostings((prev) => prev.map((p) => (ids.has(p.id) ? { ...p, ...meta } : p)));
+    const results = await Promise.all(targets.map((p) => updatePostingMeta(p.id, meta)));
+    setBulkBusy(false);
+    const failed = targets.filter((_, i) => !results[i].ok);
+    if (failed.length > 0) {
+      const back = new Map(failed.map((p) => [p.id, p]));
+      setPostings((prev) => prev.map((p) => (back.has(p.id) ? { ...p, ...backOf(back.get(p.id)!) } : p)));
+      toast.error(`${failed.length}개 공고는 저장하지 못했어요. 다시 시도해 주세요.`);
+    }
+    const done = targets.filter((_, i) => results[i].ok);
+    if (done.length === 0) return;
+    toast(`${done.length}개 공고의 ${label}을 바꿨어요`);
+    pushUndo(`${done.length}개 공고 ${label}`, async () => {
+      const back = new Map(done.map((p) => [p.id, p]));
+      setPostings((prev) => prev.map((p) => (back.has(p.id) ? { ...p, ...backOf(back.get(p.id)!) } : p)));
+      await Promise.all(done.map((p) => updatePostingMeta(p.id, backOf(p))));
+    });
+  }
+
+  async function bulkFinish() {
+    const targets = selectedRows.filter((p) => currentStepIndex(p.steps) !== -1);
+    if (targets.length === 0) return toast("고른 공고는 이미 전형이 끝났어요");
+    const ids = new Set(targets.map((p) => p.id));
+    setBulkBusy(true);
+    setPostings((prev) => prev.map((p) => (ids.has(p.id) ? { ...p, steps: withCurrentStep(p.steps, p.steps.length) } : p)));
+    const results = await Promise.all(targets.map((p) => setCurrentStep(p.id, p.steps.length)));
+    setBulkBusy(false);
+    const failed = targets.filter((_, i) => !results[i].ok);
+    if (failed.length > 0) {
+      const back = new Map(failed.map((p) => [p.id, p.steps]));
+      setPostings((prev) => prev.map((p) => (back.has(p.id) ? { ...p, steps: back.get(p.id)! } : p)));
+      toast.error(`${failed.length}개 공고는 저장하지 못했어요. 다시 시도해 주세요.`);
+    }
+    const done = targets.filter((_, i) => results[i].ok);
+    if (done.length === 0) return;
+    toast(`${done.length}개 공고를 전형 끝으로 옮겼어요`);
+    pushUndo(`${done.length}개 공고 전형 끝`, async () => {
+      const back = new Map(done.map((p) => [p.id, p.steps]));
+      setPostings((prev) => prev.map((p) => (back.has(p.id) ? { ...p, steps: back.get(p.id)! } : p)));
+      await Promise.all(done.map((p) => setCurrentStep(p.id, currentStepIndex(p.steps))));
+    });
+  }
+
+  async function bulkDelete() {
+    const targets = selectedRows;
+    setRemoving(true);
+    const results = await Promise.all(targets.map((p) => deletePosting(p.id)));
+    setRemoving(false);
+    const gone = new Set(targets.filter((_, i) => results[i].ok).map((p) => p.id));
+    setPostings((prev) => prev.filter((p) => !gone.has(p.id)));
+    setSelected((prev) => new Set([...prev].filter((id) => !gone.has(id))));
+    setBulkDeleting(false);
+    if (gone.size < targets.length) toast.error(`${targets.length - gone.size}개 공고는 지우지 못했어요. 다시 시도해 주세요.`);
+    if (gone.size > 0) toast(`${gone.size}개 공고를 지웠어요`);
+  }
 
   return (
     <Card className="@container gap-0 px-0 py-0 md:px-0 md:py-0">
@@ -363,7 +539,10 @@ export function PostingList({
             type="button"
             role="tab"
             aria-selected={tab === t.value}
-            onClick={() => setTab(t.value)}
+            onClick={() => {
+              setTab(t.value);
+              clearSelection();
+            }}
             className={cn(
               "-mb-px flex shrink-0 items-center gap-1.5 border-b-2 border-transparent px-2.5 pb-3 text-[15px] font-medium text-muted-foreground transition-colors hover:text-foreground",
               tab === t.value && "border-foreground font-semibold text-foreground",
@@ -382,25 +561,115 @@ export function PostingList({
         ))}
       </div>
 
-      {/* 걸러 보기 */}
-      <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:px-6">
-        <ListFilter className="size-4 text-muted-foreground" aria-hidden />
-        <FilterMenu
-          label="우선순위"
-          options={PRIORITIES}
-          selected={priorityFilter}
-          onChange={setPriorityFilter}
-        />
-        <FilterMenu label="근로형태" options={typeOptions} selected={typeFilter} onChange={setTypeFilter} />
-        {filtering && (
-          <Button variant="ghost" size="sm" onClick={() => { setPriorityFilter([]); setTypeFilter([]); }}>
-            걸러 보기 지우기
+      {selectedRows.length > 0 ? (
+        /* 고른 공고 편집 막대 (D-66) */
+        <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:px-6" role="toolbar" aria-label="고른 공고 한꺼번에 편집">
+          <span className="mr-1 text-sm font-semibold text-primary-strong tabular-nums">{selectedRows.length}개 선택됨</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={bulkBusy}>
+                우선순위
+                <ChevronDown data-icon="inline-end" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuLabel>우선순위 한꺼번에</DropdownMenuLabel>
+              {PRIORITIES.map((o) => (
+                <DropdownMenuItem key={o.value} onSelect={() => bulkMeta({ priority: o.value as Priority }, "우선순위")}>
+                  {o.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={bulkBusy}>
+                근로형태
+                <ChevronDown data-icon="inline-end" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuLabel>근로형태 한꺼번에</DropdownMenuLabel>
+              {[...typeOptions.filter((o) => o.value !== NO_TYPE), { value: NO_TYPE, label: NO_TYPE }].map((o) => (
+                <DropdownMenuItem key={o.value} onSelect={() => bulkMeta({ employmentType: o.value === NO_TYPE ? null : o.value }, "근로형태")}>
+                  {o.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="outline" size="sm" disabled={bulkBusy} onClick={bulkFinish}>
+            <Flag data-icon="inline-start" />
+            전형 끝
           </Button>
-        )}
-      </div>
+          <Button variant="destructive" size="sm" disabled={bulkBusy} onClick={() => setBulkDeleting(true)}>
+            <Trash2 data-icon="inline-start" />
+            삭제
+          </Button>
+          <Button variant="ghost" size="icon-sm" className="ml-auto" aria-label="고르기 해제 (Esc)" title="고르기 해제 (Esc)" onClick={clearSelection}>
+            <X />
+          </Button>
+        </div>
+      ) : (
+        /* 걸러 보기 + 정렬 */
+        <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:px-6">
+          <ListFilter className="size-4 text-muted-foreground" aria-hidden />
+          <FilterMenu
+            label="우선순위"
+            options={PRIORITIES}
+            selected={priorityFilter}
+            onChange={(next) => {
+              setPriorityFilter(next);
+              clearSelection();
+            }}
+          />
+          <FilterMenu
+            label="근로형태"
+            options={typeOptions}
+            selected={typeFilter}
+            onChange={(next) => {
+              setTypeFilter(next);
+              clearSelection();
+            }}
+          />
+          {filtering && (
+            <Button variant="ghost" size="sm" onClick={() => { setPriorityFilter([]); setTypeFilter([]); }}>
+              걸러 보기 지우기
+            </Button>
+          )}
+          {/* 정렬 (D-65) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="ml-auto text-muted-foreground">
+                <ArrowUpDown data-icon="inline-start" />
+                {SORTS.find((o) => o.value === sort)?.label}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>정렬</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={sort} onValueChange={(v) => changeSort(v as Sort)}>
+                {SORTS.map((o) => (
+                  <DropdownMenuRadioItem key={o.value} value={o.value}>
+                    {o.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
       {/* 표 머리 (넓은 화면) */}
-      <div className={cn("hidden items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid", TABLE_COLUMNS)}>
+      <div className={cn("relative hidden items-center gap-3 border-y border-border bg-muted/60 px-6 py-2.5 text-xs font-medium text-muted-foreground lg:grid", TABLE_COLUMNS)}>
+        {/* 보이는 줄 전체 고르기 (D-66) */}
+        {rows.length > 0 && (
+          <input
+            type="checkbox"
+            aria-label="보이는 공고 모두 고르기"
+            checked={allSelected}
+            onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map((p) => p.id)))}
+            className="absolute top-1/2 left-1.5 size-3.5 -translate-y-1/2 accent-primary"
+          />
+        )}
         <span>기업 · 직무</span>
         <span>진행 단계</span>
         <span>상태</span>
@@ -427,8 +696,17 @@ export function PostingList({
           ) : null}
         </div>
       ) : (
-        <ul className="flex flex-col divide-y divide-border pb-2">
-          {rows.map((posting) => {
+        <ul
+          className={cn("flex flex-col divide-y divide-border pb-2", dragging && "cursor-default select-none")}
+          onClickCapture={(e) => {
+            // 드래그로 고른 직후에는 줄을 눌러 상세로 가지 않는다
+            if (suppressClick.current) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        >
+          {rows.map((posting, index) => {
             const current = currentStepIndex(posting.steps);
             const step = current === -1 ? null : posting.steps[current];
             const days = allDaysLeft[posting.id] ?? null;
@@ -436,19 +714,35 @@ export function PostingList({
             // 끝낸 단계 없이 마감이 지난 공고는 흐리게 (D-44·D-46)
             const missed = days !== null && days < 0 && posting.steps.every((s) => s.completedAt === null);
             const dim = missed && "opacity-50";
+            const isSelected = selected.has(posting.id);
             return (
               <li
                 key={posting.id}
+                onPointerDown={(e) => onRowPointerDown(e, index)}
+                onPointerEnter={() => onRowPointerEnter(index)}
                 className={cn(
-                  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6",
+                  "group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/50 md:px-6",
                   TABLE_COLUMNS,
                   posting.id === highlightId && "bg-accent",
+                  isSelected && "bg-primary-soft hover:bg-primary-soft",
                 )}
               >
+                {/* 줄 고르기 체크 (컴퓨터 화면, 마우스를 올리거나 고른 게 있으면 보임) (D-66) */}
+                <input
+                  type="checkbox"
+                  aria-label={`${posting.company} 고르기`}
+                  checked={isSelected}
+                  onChange={() => toggleSelected(posting.id)}
+                  className={cn(
+                    "absolute top-1/2 left-1.5 z-20 hidden size-3.5 -translate-y-1/2 accent-primary lg:block",
+                    hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                  )}
+                />
                 {/* 기업 · 직무 (줄 전체를 누르면 상세로) */}
                 <div className={cn("min-w-0", dim)}>
                   <Link
                     href={href(`/app/postings/${posting.id}`)}
+                    draggable={false}
                     className="block truncate text-sm font-semibold after:absolute after:inset-0"
                   >
                     {posting.company}
@@ -543,6 +837,31 @@ export function PostingList({
           {editing && <PostingEditForm key={editing.id} posting={editing} onSave={saveEdit} onCancel={() => setEditing(null)} />}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={bulkDeleting} onOpenChange={(open) => !open && !removing && setBulkDeleting(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>고른 공고 {selectedRows.length}개를 지울까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedRows.slice(0, 3).map((p) => p.company).join(", ")}
+              {selectedRows.length > 3 && ` 외 ${selectedRows.length - 3}개`} — 전형 단계·준비 항목·할 일도 함께 지워지고 되돌릴 수 없어요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removing}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removing}
+              onClick={(e) => {
+                e.preventDefault();
+                bulkDelete();
+              }}
+            >
+              {removing ? "지우는 중…" : `${selectedRows.length}개 지우기`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && !removing && setDeleting(null)}>
         <AlertDialogContent>
