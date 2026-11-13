@@ -43,8 +43,10 @@ function ga(): Gtag | null {
       };
     w.gtag("js", new Date());
     // 모든 기록의 주소를 공고 번호·쿼리 뺀 주소로 (GA 가 첫 화면에 자동으로 보내는 기록 포함)
-    w.gtag("set", { page_location: window.location.origin + cleanPath(window.location.pathname) });
+    const first = window.location.origin + cleanPath(window.location.pathname);
+    w.gtag("set", { page_location: first });
     w.gtag("config", GA_ID, {
+      page_location: first,
       send_page_view: false,
       app_mode: window.matchMedia("(display-mode: standalone)").matches ? "installed" : "browser",
     });
