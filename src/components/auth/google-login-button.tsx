@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowser } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safe-next";
+import { track } from "@/lib/analytics";
 
 function GoogleIcon() {
   return (
@@ -25,6 +26,7 @@ export function GoogleLoginButton() {
   async function signIn() {
     setLoading(true);
     setFailed(false);
+    track("login_start", { method: "Google" });
     const next = safeNextPath(searchParams.get("next"));
     const { error } = await createSupabaseBrowser().auth.signInWithOAuth({
       provider: "google",

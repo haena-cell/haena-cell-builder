@@ -16,6 +16,7 @@ import { Segmented } from "@/components/postings/segmented";
 import type { ExtractInput, ExtractResult } from "@/lib/extract-posting";
 import { findSavedByLink, type PostingSummary } from "@/lib/posting-actions";
 import { saveDraft, saveQueue, type Draft, type DraftSource } from "@/lib/practice-store";
+import { track } from "@/lib/analytics";
 
 type Mode = "link" | "text" | "image" | "multi";
 
@@ -128,7 +129,10 @@ export function NewPostingForm() {
       while (next < tasks.length) {
         const task = tasks[next++];
         patch(task.key, { status: "reading" });
-        patch(task.key, await readOne(task.input, task.source));
+        const result = await readOne(task.input, task.source);
+        // 이탈 분석(D-75): 방법·성공 여부만
+        if (result.status !== "saved") track("posting_read", { method: task.input.kind, multi: true, ok: result.status === "ok" });
+        patch(task.key, result);
       }
     }
     await Promise.all(Array.from({ length: Math.min(MULTI_AT_ONCE, tasks.length) }, worker));
@@ -221,6 +225,12 @@ export function NewPostingForm() {
         body: JSON.stringify(input),
       });
       const data = (await res.json()) as ExtractResult & { error?: string };
+      // 이탈 분석(D-75): 방법·성공 여부만 (공고 내용은 보내지 않음)
+      track("posting_read", {
+        method: incoming ? "extension" : input.kind,
+        ok: res.ok && data.status === "ok",
+        reason: !res.ok ? "error" : data.status === "need_fallback" ? "need_fallback" : undefined,
+      });
       if (!res.ok) {
         setError(data.error ?? "정리하지 못했어요. 다시 시도해 주세요.");
       } else if (data.status === "need_fallback") {

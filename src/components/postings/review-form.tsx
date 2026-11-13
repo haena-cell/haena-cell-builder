@@ -16,6 +16,7 @@ import { Segmented } from "@/components/postings/segmented";
 import { cn } from "@/lib/utils";
 import type { DeadlineKind } from "@/lib/postings";
 import { createPosting, findSameCompanyJob, findSimilarPostings, updateFromNewRead, type PostingSummary } from "@/lib/posting-actions";
+import { track } from "@/lib/analytics";
 import { clearDraft, clearQueue, loadDraft, loadQueue, updateQueue, type Draft, type DraftQueue } from "@/lib/practice-store";
 
 // 공고에서 전형 절차를 못 읽었을 때 쓰는 기본 단계 (DB.md 4번)
@@ -157,6 +158,7 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
           steps.map((step) => step.name),
         );
         if (!result.ok) return setError(result.message);
+        track("posting_saved", { method: draft.source.kind, update: true, multi: Boolean(queue) });
         toast("기존 공고를 업데이트했어요");
         if (queue) return queue.next(choice.id);
         clearDraft();
@@ -189,6 +191,8 @@ function ReviewFormInner({ draft, queue }: { draft: Draft; queue?: QueueStep }) 
         setExistingId(result.existingId ?? null);
         return;
       }
+      // 이탈 분석(D-75): 방법만 (공고 내용은 보내지 않음)
+      track("posting_saved", { method: draft.source.kind, update: false, multi: Boolean(queue) });
       if (queue) return queue.next(result.id);
       clearDraft();
       router.push(`/app/postings?saved=${result.id}`);

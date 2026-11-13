@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 export function StartButton({ className }: { className?: string }) {
   return (
     <Button size="lg" className={className} asChild>
-      <Link href="/app">시작하기</Link>
+      <Link href="/app" data-track="start_click" data-track-label="start">
+        시작하기
+      </Link>
     </Button>
   );
 }
@@ -14,7 +16,9 @@ export function StartButton({ className }: { className?: string }) {
 export function DemoButton({ className }: { className?: string }) {
   return (
     <Button variant="outline" size="lg" className={className} asChild>
-      <Link href="/demo">로그인 없이 둘러보기</Link>
+      <Link href="/demo" data-track="start_click" data-track-label="demo">
+        로그인 없이 둘러보기
+      </Link>
     </Button>
   );
 }

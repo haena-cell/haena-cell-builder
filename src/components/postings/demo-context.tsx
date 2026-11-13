@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import * as realActions from "@/lib/posting-actions";
+import { track } from "@/lib/analytics";
 
 // 둘러보기 (D-34): 같은 화면 부품을 로그인 없이 쓴다. 저장 대신 성공만 돌려주고, 주소는 /app → /demo 로 바꾼다.
 
@@ -47,6 +48,31 @@ const demoActions = {
 
 type PostingActions = Pick<typeof realActions, keyof typeof demoActions>;
 
+// 이탈 분석(D-75): 단계 완료·할 일 체크를 한곳에서 기록한다 (무엇을 체크했는지는 보내지 않음)
+function withTracking(actions: PostingActions, demo: boolean): PostingActions {
+  return {
+    ...actions,
+    setStepCompleted: async (stepId, completed) => {
+      const result = await actions.setStepCompleted(stepId, completed);
+      if (result.ok && completed) track("step_done", { demo });
+      return result;
+    },
+    setPrepDone: async (itemId, done) => {
+      const result = await actions.setPrepDone(itemId, done);
+      if (result.ok && done) track("todo_done", { demo, kind: "item" });
+      return result;
+    },
+    updateSubtask: async (...args: Parameters<PostingActions["updateSubtask"]>) => {
+      const result = await actions.updateSubtask(...args);
+      if (result.ok && args[1].done === true) track("todo_done", { demo, kind: "sub" });
+      return result;
+    },
+  };
+}
+
+const trackedReal = withTracking(realActions, false);
+const trackedDemo = withTracking(demoActions, true);
+
 export function usePostingActions(): PostingActions {
-  return useIsDemo() ? demoActions : realActions;
+  return useIsDemo() ? trackedDemo : trackedReal;
 }

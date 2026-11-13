@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 // 개인정보처리방침 (D-51). 실제 수집·보관·전송 현황(2026-11-08 확인)에 맞춰 쓴다. 바뀌면 이 화면과 시행일을 함께 고친다
 const OPERATOR_NAME = "강허들";
 const OPERATOR_EMAIL = "korokkestudio@gmail.com";
-const EFFECTIVE_DATE = "2026년 11월 12일";
+const EFFECTIVE_DATE = "2026년 11월 13일";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -101,6 +101,11 @@ export default function PrivacyPage() {
                 ],
                 ["[의견 보내기]의 내용과, 적은 경우 연락처", "문의 답변, 서비스 개선", "받은 날로부터 1년"],
                 ["로그인 유지용 쿠키", "다시 로그인하지 않아도 되게", "로그아웃하거나 만료될 때까지"],
+                [
+                  "이용 통계: 본 페이지 주소(공고 번호 제외), 누른 기능 이름(예: 공고 저장), 기기·브라우저 종류, 들어온 경로, 대략적인 지역, 이용 통계 쿠키(_ga)",
+                  "어느 단계에서 이용을 멈추는지 보고 서비스 개선",
+                  "Google 애널리틱스에서 14개월 뒤 삭제, 쿠키는 2년",
+                ],
               ]}
             />
             <p>
@@ -126,8 +131,25 @@ export default function PrivacyPage() {
                   "정리하려고 넣은 공고 글이나 캡처. 보내기 전에 글 속 전화번호·이메일을 지워요",
                 ],
                 ["Google (미국)", "Google 계정으로 로그인", "Google 이 서비스에 이메일, 이름, 프로필 사진을 알려 줘요"],
+                [
+                  "Google 애널리틱스 (미국)",
+                  "이용 통계",
+                  "1번의 이용 통계. 공고 내용, 기업명, 직무, 메모, 이메일, 이름은 보내지 않아요",
+                ],
               ]}
             />
+            <p>
+              이용 통계를 원하지 않으면 브라우저에서 쿠키를 막거나{" "}
+              <a
+                href="https://tools.google.com/dlpage/gaoptout"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
+                Google 애널리틱스 차단 부가기능
+              </a>
+              을 쓰면 돼요. 막아도 서비스는 그대로 쓸 수 있어요.
+            </p>
             <p>
               해외로 보내는 정보는 서비스를 쓰는 순간 인터넷으로 전송되고, 각 업체의 보관 기준에 따라 보관 후 지워져요.
               해외로 보내는 것을 원하지 않으면 서비스 이용을 멈추고 계정을 삭제할 수 있어요. 이 경우 서비스를 쓸 수

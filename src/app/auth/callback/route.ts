@@ -10,8 +10,15 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createSupabaseServer();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      const response = NextResponse.redirect(`${origin}${next}`);
+      // 이탈 분석(D-75): 로그인 끝을 화면에서 한 번 기록하게 짧은 표시만 남긴다(누구인지는 넣지 않음)
+      const created = Date.parse(data.user?.created_at ?? "");
+      const isNew = Number.isFinite(created) && Date.now() - created < 5 * 60 * 1000;
+      response.cookies.set("hurdle_login", isNew ? "sign_up" : "login", { maxAge: 120, path: "/", sameSite: "lax" });
+      return response;
+    }
   }
   return NextResponse.redirect(`${origin}/app/login?error=1&next=${encodeURIComponent(next)}`);
 }

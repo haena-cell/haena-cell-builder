@@ -4,6 +4,7 @@ import { Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { StandaloneTitle } from "@/components/standalone-title";
 import { UndoShortcut } from "@/components/undo-shortcut";
+import { Analytics } from "@/components/analytics";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -45,6 +46,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StandaloneTitle />
         <Suspense fallback={null}>
           <UndoShortcut />
+        </Suspense>
+        {/* 이탈 분석 (D-75) */}
+        <Suspense fallback={null}>
+          <Analytics />
         </Suspense>
         <Toaster theme="light" mobileOffset={{ bottom: 88 }} />
       </body>

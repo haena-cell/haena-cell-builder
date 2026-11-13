@@ -29,6 +29,8 @@ export function LandingPreview() {
       <Link
         href="/demo"
         aria-label="예시 화면 둘러보기"
+        data-track="start_click"
+        data-track-label="preview"
         className="absolute inset-0 flex items-end justify-center pb-5 outline-none"
       >
         <span className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform group-hover:-translate-y-0.5">
