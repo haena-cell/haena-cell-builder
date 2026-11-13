@@ -5,26 +5,58 @@ import { DemoButton, StartButton } from "@/components/start-button";
 import { BetaBadge } from "@/components/beta-badge";
 import { FeedbackButton } from "@/components/feedback-button";
 import { LandingPreview } from "@/components/landing-preview";
+import { Mascot, type MascotPose } from "@/components/mascot";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StepBar } from "@/components/postings/step-bar";
 import { cn } from "@/lib/utils";
 
-const steps = [
+// 단계마다 마스코트 허들이가 한마디 (2026-11-13 사용자 요청, D-78)
+const steps: { title: string; body: string; pose: MascotPose; say: string }[] = [
   {
     title: "공고 링크 붙여넣기",
     body: "채용 공고 주소를 붙여넣어요. 링크로 못 읽는 공고는 글이나 캡처로 넣어요.",
+    pose: "read",
+    say: "링크만 주세요. 공고는 제가 꼼꼼히 읽어 볼게요!",
   },
   {
     title: "자동으로 정리, 나는 확인만",
     body: "공고 페이지에 적힌 기업명 · 직무 · 마감일 · 근무지를 채워 드려요. 틀린 칸만 고쳐 저장해요.",
+    pose: "understand",
+    say: "헷갈리는 칸은 표시해 둘게요. 확인만 해 주세요.",
   },
   {
     title: "카드와 달력으로 관리",
     body: "마감이 가까운 순서로 카드가 쌓이고, 서류를 내면 [제출 완료]로 다음 단계로 넘겨요.",
+    pose: "jump",
+    say: "[제출 완료]를 누르면 같이 다음 허들로 폴짝!",
   },
 ];
+
+// 허들이 말풍선. tail: 꼬리가 향하는 쪽(허들이가 있는 쪽)
+function Bubble({
+  children,
+  tail,
+  className,
+}: {
+  children: React.ReactNode;
+  tail: "left" | "bottom";
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        "relative rounded-2xl px-4 py-3 text-[15px] leading-snug font-medium text-foreground",
+        "before:absolute before:size-3 before:rotate-45 before:bg-inherit",
+        tail === "left" ? "before:top-1/2 before:-left-1.5 before:-translate-y-1/2" : "before:-bottom-1.5 before:left-1/2 before:-translate-x-1/2",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
+}
 
 // 예시 화면에 쓰는 가짜 공고 단계
 const exampleSteps = [
@@ -55,7 +87,15 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-3 px-3 md:gap-4 md:px-5">
         {/* 메인 */}
         <Panel className="md:pt-16 md:pb-12">
-          <Reveal>
+          <Reveal className="md:flex md:items-end md:justify-between md:gap-8">
+          <div>
+            {/* 휴대폰: 제목 위에 작게 인사 */}
+            <div className="mb-6 flex items-center gap-3 md:hidden">
+              <Mascot pose="sit" size={72} hop />
+              <Bubble tail="left" className="bg-muted">
+                안녕하세요, 허들이에요! 마감은 제가 같이 챙길게요.
+              </Bubble>
+            </div>
             <h1 className="max-w-4xl text-4xl leading-[1.15] font-bold tracking-tight md:text-6xl">
               채용공고 링크 하나로
               <br />
@@ -72,6 +112,16 @@ export default function Home() {
               <span className="text-sm text-muted-foreground">
                 Google 계정으로 바로 시작해요
               </span>
+            </div>
+          </div>
+            {/* 컴퓨터: 오른쪽에 크게 인사 */}
+            <div className="hidden shrink-0 flex-col items-center gap-4 md:flex">
+              <Bubble tail="bottom" className="max-w-60 bg-muted text-center">
+                안녕하세요, 허들이에요!
+                <br />
+                지원한 회사가 많아져도 마감은 제가 같이 챙길게요.
+              </Bubble>
+              <Mascot pose="sit" size={190} hop />
             </div>
           </Reveal>
           <div className="mt-10">
@@ -95,9 +145,15 @@ export default function Home() {
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                         {i + 1}
                       </span>
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="text-lg font-bold">{s.title}</h3>
                         <p className="mt-1 text-base leading-relaxed text-muted-foreground">{s.body}</p>
+                        <div className="mt-4 flex items-center gap-2.5">
+                          <Mascot pose={s.pose} size={60} />
+                          <Bubble tail="left" className="bg-card text-sm">
+                            {s.say}
+                          </Bubble>
+                        </div>
                       </div>
                     </div>
                   </Reveal>
@@ -140,6 +196,24 @@ export default function Home() {
               </div>
             </Reveal>
           </div>
+        </Panel>
+
+        {/* 마무리: 허들이와 시작하기 */}
+        <Panel>
+          <Reveal className="flex flex-col items-center text-center">
+            <Bubble tail="bottom" className="bg-muted">
+              오늘의 허들, 같이 넘어 볼까요?
+            </Bubble>
+            <Mascot pose="cheer" size={150} className="mt-4" />
+            <h2 className="mt-6 text-3xl font-bold tracking-tight md:text-4xl">지원 현황, 허들이랑 정리해요</h2>
+            <p className="mt-3 text-base text-muted-foreground md:text-lg">
+              로그인 없이 예시 화면부터 둘러봐도 괜찮아요.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+              <StartButton className="h-12 px-8 text-base font-semibold" />
+              <DemoButton className="h-12 px-6 text-base font-semibold" />
+            </div>
+          </Reveal>
         </Panel>
       </main>
 
