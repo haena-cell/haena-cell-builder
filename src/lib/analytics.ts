@@ -22,14 +22,30 @@ type Params = Record<string, string | number | boolean | undefined>;
 
 let started = false;
 
+// 이 기기를 이탈 분석에서 빼는 표시 (D-77): 운영자 계정 로그인 또는 ?ga=off. lib/operator 의 GA_OFF_COOKIE 와 같은 이름
+const OFF_COOKIE = "hurdle_ga_off";
+
 function isLocal() {
   const host = window.location.hostname;
   return host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".localhost");
 }
 
+// 보내지 않는 경우: 측정 ID 없음, 이 컴퓨터에서만 열리는 확인용 주소(localhost), 이 기기 빼기
+export function isTrackingOff() {
+  if (typeof window === "undefined" || !GA_ID) return true;
+  return isLocal() || new RegExp(`(?:^|; )${OFF_COOKIE}=1`).test(document.cookie);
+}
+
+// 이 기기 빼기·되돌리기. 이미 불러온 GA 도 바로 멈춘다
+export function setTrackingOff(off: boolean) {
+  if (typeof window === "undefined" || !GA_ID) return;
+  document.cookie = off ? `${OFF_COOKIE}=1; Max-Age=${60 * 60 * 24 * 365}; Path=/; SameSite=Lax` : `${OFF_COOKIE}=; Max-Age=0; Path=/`;
+  (window as unknown as Record<string, boolean>)[`ga-disable-${GA_ID}`] = off;
+}
+
 // 처음 부를 때 GA 설정을 먼저 넣는다(js → config → 행동 순서 보장). 스크립트가 늦게 와도 줄 서 있다가 보내진다
 function ga(): Gtag | null {
-  if (typeof window === "undefined" || !GA_ID || isLocal()) return null;
+  if (isTrackingOff()) return null;
   const w = window as GaWindow;
   if (!started) {
     started = true;

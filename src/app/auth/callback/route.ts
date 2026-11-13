@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-next";
+import { GA_OFF_COOKIE, isOperatorEmail } from "@/lib/operator";
 
 // Google 계정 선택을 마치고 돌아오는 곳. 받은 코드를 로그인 정보로 바꾼 뒤 원래 화면으로 보낸다.
 export async function GET(request: NextRequest) {
@@ -17,6 +18,10 @@ export async function GET(request: NextRequest) {
       const created = Date.parse(data.user?.created_at ?? "");
       const isNew = Number.isFinite(created) && Date.now() - created < 5 * 60 * 1000;
       response.cookies.set("hurdle_login", isNew ? "sign_up" : "login", { maxAge: 120, path: "/", sameSite: "lax" });
+      // 운영자 계정이면 이 기기를 이탈 분석에서 뺀다 (D-77, 1년)
+      if (isOperatorEmail(data.user?.email)) {
+        response.cookies.set(GA_OFF_COOKIE, "1", { maxAge: 60 * 60 * 24 * 365, path: "/", sameSite: "lax" });
+      }
       return response;
     }
   }
