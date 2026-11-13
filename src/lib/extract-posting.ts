@@ -1,5 +1,6 @@
 import type { DeadlineKind } from "@/lib/postings";
 import { aiExtract, mergeAi } from "@/lib/ai-extract";
+import { AI_GATE_HINT, AI_GATE_IMAGE, takeAiTurn } from "@/lib/ai-quota";
 import { readKeywordFields } from "@/lib/posting-keywords";
 import { readPostingLink } from "@/lib/read-posting-link";
 
@@ -100,26 +101,37 @@ export async function extractPosting(input: ExtractInput): Promise<ExtractResult
     const result = await readPostingLink(input.url);
     if (result.status === "unreadable") return { status: "need_fallback", message: result.message };
     let posting = result.posting;
+    let gateHint: string | undefined;
     if (needsAi(posting) && linkAiAllowed(input.url)) {
-      const ai = await aiExtract({ text: result.body.text });
-      if (ai) posting = mergeAi(posting, ai);
+      // AI 하루 한도·크레딧 만료 (D-80): 못 쓰면 키워드 결과 그대로 + 안내
+      const gate = await takeAiTurn();
+      if (gate === "ok") {
+        const ai = await aiExtract({ text: result.body.text });
+        if (ai) posting = mergeAi(posting, ai);
+      } else gateHint = AI_GATE_HINT[gate];
     }
     // 링크로 못 읽은 서류·전형은 사용자가 글·캡처로 넣으면 채워진다
     const missingBody = posting.unsure.includes("steps") || posting.unsure.includes("requiredDocs");
-    const hint = missingBody
-      ? "링크로는 기본 정보만 읽었어요. 서류·전형은 공고 글을 붙여넣거나 화면을 캡처해 올리면 노란 칸을 채울 수 있어요."
-      : undefined;
+    const hint =
+      gateHint ??
+      (missingBody
+        ? "링크로는 기본 정보만 읽었어요. 서류·전형은 공고 글을 붙여넣거나 화면을 캡처해 올리면 노란 칸을 채울 수 있어요."
+        : undefined);
     return { status: "ok", posting, isExample: false, hint };
   }
 
   if (input.kind === "text") {
     let posting = fromText(input.text);
+    const gate = await takeAiTurn();
+    if (gate !== "ok") return { status: "ok", posting, isExample: false, hint: AI_GATE_HINT[gate] };
     const ai = await aiExtract({ text: input.text });
     if (ai) posting = mergeAi(posting, ai);
     return { status: "ok", posting, isExample: false };
   }
 
   // 캡처: 글자를 AI 가 읽는다. 키가 없거나 실패하면 빈 칸으로 직접 입력
+  const gate = await takeAiTurn();
+  if (gate !== "ok") return { status: "need_fallback", message: AI_GATE_IMAGE[gate] };
   const ai = await aiExtract({ imageDataUrl: input.dataUrl });
   if (!ai) return { status: "need_fallback", message: "캡처를 읽지 못했어요. 공고 글을 붙여넣어 주세요." };
   return { status: "ok", posting: mergeAi(EMPTY, ai), isExample: false };

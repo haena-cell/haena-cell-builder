@@ -271,6 +271,7 @@ export type Database = {
     Functions: {
       create_sample_postings: { Args: never; Returns: number }
       delete_my_account: { Args: never; Returns: undefined }
+      use_ai_quota: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
