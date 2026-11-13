@@ -3,7 +3,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { cleanPath, GA_ID, track } from "@/lib/analytics";
+import { GA_ID, track, trackPageView } from "@/lib/analytics";
 
 // Google 애널리틱스 (D-75). 측정 ID 는 공개해도 되는 값(NEXT_PUBLIC_GA_ID).
 // 자동 페이지 기록은 끄고, 공고 번호·쿼리를 뺀 주소로 직접 보낸다. localhost 에서는 보내지 않는다(lib/analytics)
@@ -13,12 +13,7 @@ export function Analytics() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const path = cleanPath(pathname);
-    track("page_view", {
-      page_path: path,
-      page_location: window.location.origin + path,
-      page_title: document.title,
-    });
+    trackPageView(pathname);
   }, [pathname]);
 
   // 로그인 직후 한 번: 로그인 처리(auth/callback)가 남긴 표시를 읽고 지운다

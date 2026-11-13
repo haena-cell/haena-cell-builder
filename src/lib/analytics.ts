@@ -42,6 +42,8 @@ function ga(): Gtag | null {
         w.dataLayer!.push(arguments);
       };
     w.gtag("js", new Date());
+    // 모든 기록의 주소를 공고 번호·쿼리 뺀 주소로 (GA 가 첫 화면에 자동으로 보내는 기록 포함)
+    w.gtag("set", { page_location: window.location.origin + cleanPath(window.location.pathname) });
     w.gtag("config", GA_ID, {
       send_page_view: false,
       app_mode: window.matchMedia("(display-mode: standalone)").matches ? "installed" : "browser",
@@ -52,6 +54,23 @@ function ga(): Gtag | null {
 
 export function track(event: TrackEvent, params: Params = {}) {
   ga()?.("event", event, params);
+}
+
+let firstView = true;
+
+// 페이지 이동 기록. 이후 다른 행동 기록도 이 주소를 쓴다.
+// 첫 화면은 GA 가 스스로 한 번 보내므로(측정 ID 의 Google 태그 설정) 두 번 세지 않게 건너뛴다
+export function trackPageView(pathname: string) {
+  const g = ga();
+  if (!g) return;
+  const path = cleanPath(pathname);
+  const location = window.location.origin + path;
+  g("set", { page_location: location, page_path: path });
+  if (firstView) {
+    firstView = false;
+    return;
+  }
+  g("event", "page_view", { page_location: location, page_path: path, page_title: document.title });
 }
 
 // 페이지 주소에서 공고 번호 같은 id 를 빼고 보낸다: /app/postings/3f2a… → /app/postings/[id]
