@@ -13,7 +13,7 @@ const EXTENSIONS_URL = "chrome://extensions";
 
 // 캡처 목록 — 파일은 public/extension-guide/ (모두 1200×900, 같은 비율). src 가 비면 무엇을 찍을지 적힌 빈 자리가 보인다
 // 개인 이름·다른 확장 프로그램·폴더 이름은 가렸고, 공고 내용은 흐리게 하거나 둘러보기용 가짜 공고(노을커머스)로 바꿨다 (2026-11-12)
-type Shot = { src: string | null; width?: number; height?: number; alt: string; need: string };
+export type Shot = { src: string | null; width?: number; height?: number; alt: string; need: string };
 const W = 1200;
 const H = 900;
 const SHOTS = {
@@ -26,7 +26,7 @@ const SHOTS = {
   saved: { src: "/extension-guide/saved.png", width: W, height: H, alt: "저장을 마친 작은 창", need: "[저장]을 누른 뒤 저장됐다고 나온 작은 창" },
 } satisfies Record<string, Shot>;
 
-function Panel({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
+export function Panel({ title, aside, children }: { title: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card className="gap-4 px-4 md:px-6" aria-label={title}>
       <div className="flex items-center justify-between gap-2">
@@ -38,7 +38,7 @@ function Panel({ title, aside, children }: { title: string; aside?: React.ReactN
   );
 }
 
-function Step({ n, shot, children }: { n: number; shot?: Shot; children: React.ReactNode }) {
+export function Step({ n, shot, children }: { n: number; shot?: Shot; children: React.ReactNode }) {
   return (
     <li className="flex flex-col gap-3">
       <div className="flex gap-3">
