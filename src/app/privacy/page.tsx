@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 // 개인정보처리방침 (D-51). 실제 수집·보관·전송 현황(2026-11-08 확인)에 맞춰 쓴다. 바뀌면 이 화면과 시행일을 함께 고친다
 const OPERATOR_NAME = "강허들";
-const OPERATOR_EMAIL = "haena.wrk@gmail.com";
+const OPERATOR_EMAIL = "korokkestudio@gmail.com";
 const EFFECTIVE_DATE = "2026년 11월 12일";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
