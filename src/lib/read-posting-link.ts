@@ -9,8 +9,8 @@ import { htmlToLines, readKeywordFields, stepsFromRounds } from "@/lib/posting-k
 const TIMEOUT_MS = 8000;
 const MAX_BYTES = 3_000_000;
 const MAX_REDIRECTS = 3;
-const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
+// 브라우저인 척하지 않고 허들이라고 밝힌다 (LAUNCH B3, D-79). 2026-11-14 원티드·사람인·잡코리아·캐치 모두 같은 결과로 읽힘
+const USER_AGENT = "Mozilla/5.0 (compatible; HurdleBot/1.0; +https://hurdle-jobs.vercel.app)";
 const DEFAULT_STEPS: string[] = ["서류 제출", "면접", "최종 결과"];
 
 export type LinkReadResult =

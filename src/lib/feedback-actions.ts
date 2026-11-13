@@ -24,5 +24,9 @@ export async function sendFeedback(input: {
     contact: contact || null,
     page: input.page?.slice(0, 200) || null,
   });
+  if (error?.message.includes("feedback rate limit")) {
+    // 횟수 제한 (D-79): 한 계정 10분 5개, 전체 1시간 30개
+    return { ok: false, message: "의견이 잠깐 많이 몰렸어요. 조금 뒤에 다시 보내 주세요." };
+  }
   return error ? { ok: false, message: "보내지 못했어요. 잠시 뒤 다시 시도해 주세요." } : { ok: true };
 }
