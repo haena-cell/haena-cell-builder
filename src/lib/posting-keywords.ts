@@ -360,6 +360,41 @@ function fromSentences(lines: string[]) {
   return { company, jobTitle };
 }
 
+// 카드뉴스(이미지 공고)를 글자 인식으로 옮긴 글 (D-82): "인턴 / 회사명 / 직무" 처럼 태그·회사·직무가 큰 제목으로 한 줄씩
+const CARD_JOB = /디자이너|designer|개발자|developer|엔지니어|engineer|마케터|marketer|기획자|매니저|manager|인턴십|인턴|\bPM\b|\bPD\b|\bMD\b/i;
+const CARD_TAG = /^(인턴|계약직|정규직|신입|경력|PICK|RECRUIT|NEW|HOT|채용|공고)(\s+(인턴|계약직|정규직|신입|경력|PICK))*$/i;
+// 회사 이름으로 볼 수 없는 줄: 페이지 번호 "2/10" · 시각 · 계정 이름(점·밑줄) · 화면 글자 · 소개 문장
+const CARD_NOISE = /^\d+\s*\/\s*\d+$|^\d{1,2}:\d{2}|[._]\w|^(게시물|팔로우|design\s*ro|디자인루키|=|<|\^)|좋아합니다|더 보기|니다[.!]?$|\d+\s*\/\s*\d+$/i;
+const CARD_CAPTION = /공고는\?|선정하는|더 보기|좋아합니다|알려드립니다|PICK\s|^[*☆★]/;
+
+function fromCard(lines: string[]) {
+  const head = lines.slice(0, 60);
+  for (const [i, raw] of head.entries()) {
+    const line = raw.replace(/️/g, "").trim();
+    // 계정 이름("designer_kellys2")은 직무가 아니다
+    if (line.length > 40 || CARD_TAG.test(line) || !CARD_JOB.test(line) || CARD_CAPTION.test(line) || isLabelLine(line) || /^[\w.]+$/.test(line) && /[._\d]/.test(line)) continue;
+    // "UI/UX 디자이너 | 체험형 인턴" 은 앞쪽이 직무
+    let job = tidyHeadline(line.split(/\s+[|ㅣ]\s+/)[0].replace(/[!.]+$/, ""));
+    // "프로덕트 디자이너 / 커뮤니티실" 처럼 조직 이름이 다음 줄에 이어지는 경우
+    const next = head[i + 1]?.trim();
+    if (next && next.length <= 10 && /(실|팀|부문|본부|센터|그룹)$/.test(next)) job = `${job} ${next}`;
+    // 바로 위쪽의 짧은 이름 줄이 회사 (띄어쓰기가 많은 홍보 문구는 건너뜀)
+    let company: string | null = null;
+    for (const above of head.slice(Math.max(0, i - 6), i).reverse()) {
+      const name = above.trim();
+      if (!name || CARD_TAG.test(name) || CARD_NOISE.test(name) || /^[^\p{L}]+$/u.test(name)) continue;
+      if (name.length > 20 || (name.match(/\s/g)?.length ?? 0) > 2 || CARD_JOB.test(name) || isLabelLine(name)) continue;
+      company = bareCompany(name);
+      break;
+    }
+    return { company, jobTitle: job || null };
+  }
+  return { company: null, jobTitle: null };
+}
+
+// "모집분야 : 프로덕트 디자인, 인턴" 처럼 분야 + 고용 형태를 적은 값은 직무 이름이 아니다
+const FIELD_WITH_TYPE = /,\s*(인턴|계약직|정규직|신입|경력|신입\s*\/\s*경력)$/;
+
 // 한 공고에 여러 직무가 있을 때 후보 (D-43). 확실한 모양만 읽고 나머지는 AI 에 맡긴다
 function jobOptionsFrom(lines: string[], titleLabel: string | null) {
   const found: string[] = [];
@@ -438,10 +473,16 @@ export function readKeywordFields(text: string, now: Date = new Date()): Keyword
   // 값이 문장처럼 길면 항목 값이 아니다 (표 머리글 다음 줄의 소개 글 등)
   const shortValue = (max: number) => (v: string) => v.length <= max && !/니다[.!]?$/.test(v);
   const companyLabel = findLabelValue(lines, "company", shortValue(30)) ?? emojiValue(lines, "company");
-  const titleLabel = findLabelValue(lines, "jobTitle", shortValue(40)) ?? emojiValue(lines, "jobTitle");
+  const labeledTitle = findLabelValue(lines, "jobTitle", shortValue(40)) ?? emojiValue(lines, "jobTitle");
   const first = fromHeadline(lines);
   const sentences = fromSentences(lines);
-  const headline = { company: first.company ?? sentences.company, jobTitle: first.jobTitle ?? sentences.jobTitle };
+  const card = fromCard(lines);
+  // 분야 + 고용 형태 값(D-82)은 카드 큰 제목의 직무가 있으면 그쪽을 쓴다
+  const titleLabel = labeledTitle && FIELD_WITH_TYPE.test(labeledTitle) && card.jobTitle ? null : labeledTitle;
+  const headline = {
+    company: first.company ?? sentences.company ?? card.company,
+    jobTitle: first.jobTitle ?? sentences.jobTitle ?? card.jobTitle,
+  };
   const guessed: KeywordFields["guessed"] = [];
   if (!companyLabel && headline.company) guessed.push("company");
   if (!titleLabel && headline.jobTitle) guessed.push("jobTitle");
