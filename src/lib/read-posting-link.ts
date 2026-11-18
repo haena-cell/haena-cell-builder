@@ -204,10 +204,36 @@ function tidyTitle(title: string, company: string) {
 
 type Draft = { posting: ExtractedPosting; deadlineUnsure: boolean; guessedFields?: string[] };
 
-function fromJobPosting(job: Record<string, unknown>, html: string): Draft {
+// 본문 접수기간이 "~ 채용 시 마감"·"~ 상시"면 정리 정보의 날짜보다 본문을 따른다 (D-84: 링커리어는 임의 날짜를 넣어 둠)
+function openEndedPeriod(text: string) {
+  const m = /(?:접수|모집|지원)\s*기간\s*[:：]?\s*[^~\n]{0,30}~\s*(채용\s*시\s*마감|상시)/.exec(text);
+  if (!m) return null;
+  return /상시/.test(m[1])
+    ? { deadlineKind: "rolling" as const, deadlineAt: null, deadlineTimeKnown: false }
+    : { deadlineKind: "until_filled" as const, deadlineAt: null, deadlineTimeKnown: false };
+}
+
+// 정리 정보의 마감 시각은 원문 글에 그 시각이 적혀 있을 때만 믿는다 (D-84: 원티드·링커리어가 날짜만인 공고에 오전 9시를 넣음)
+// 잡코리아는 날짜만인 공고를 23:59, 시각이 있는 공고를 그 시각으로 따로 적어 그대로 믿는다
+function timeWritten(deadline: NonNullable<ReturnType<typeof deadlineFrom>>, text: string, url: URL) {
+  if (!deadline.deadlineTimeKnown || !deadline.deadlineAt) return deadline;
+  if (/(^|\.)jobkorea\.co\.kr$/.test(url.hostname)) return deadline;
+  const [h, m] = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .format(new Date(deadline.deadlineAt)).split(":").map(Number);
+  const pm = h > 12 ? h - 12 : h;
+  const written = new RegExp(
+    `(?<!\\d)0?${h}\\s*:\\s*${String(m).padStart(2, "0")}(?!\\d)|(?<!\\d)${h}\\s*시` + (m === 0 ? "" : `\\s*${m}\\s*분`) + `|오(?:전|후)\\s*${pm}\\s*시`,
+  ).test(text);
+  if (written) return deadline;
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(deadline.deadlineAt));
+  return { deadlineKind: "date" as const, deadlineAt: new Date(`${day}T23:59:00+09:00`).toISOString(), deadlineTimeKnown: false, timeDropped: true };
+}
+
+function fromJobPosting(job: Record<string, unknown>, html: string, url: URL): Draft {
   const company = clean((job.hiringOrganization as { name?: unknown } | undefined)?.name);
-  const deadline =
-    (typeof job.validThrough === "string" ? deadlineFrom(job.validThrough) : null) ?? deadlineFromText(html);
+  const text = clean(html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<br\s*\/?>|<\/(p|div|li|dd|h\d)>/gi, "\n"));
+  const fromSchema = typeof job.validThrough === "string" ? deadlineFrom(job.validThrough) : null;
+  const deadline = openEndedPeriod(text) ?? (fromSchema ? timeWritten(fromSchema, text, url) : null) ?? deadlineFromText(html);
   const posting: ExtractedPosting = {
     company,
     jobTitle: tidyTitle(clean(job.title), company),
@@ -223,7 +249,8 @@ function fromJobPosting(job: Record<string, unknown>, html: string): Draft {
   };
   // 정리 정보에 마감일이 없어 글에서 찾았거나, 자정 마감(사이트마다 뜻이 달라서)이면 확인받는다
   const midnight = typeof job.validThrough === "string" && /T00:00(:00)?/.test(job.validThrough);
-  return { posting, deadlineUnsure: deadline === null || typeof job.validThrough !== "string" || midnight };
+  const dropped = !!deadline && "timeDropped" in deadline;
+  return { posting, deadlineUnsure: deadline === null || typeof job.validThrough !== "string" || midnight || dropped };
 }
 
 // 사람인처럼 정리 정보가 없고 설명 한 줄에 "기업, 제목, 경력:…, 마감일:2026-11-02" 가 있는 페이지
@@ -391,7 +418,7 @@ export async function readPostingLink(url: string): Promise<LinkReadResult> {
   if (!job && pathname === "/" && !search && !hash) {
     return { status: "unreadable", message: "이 주소는 사이트 첫 화면이에요. 공고 하나를 연 화면의 주소를 넣어 주세요." };
   }
-  const draft = job ? fromJobPosting(job, page.html) : fromDescription(page.html);
+  const draft = job ? fromJobPosting(job, page.html, page.finalUrl) : fromDescription(page.html);
   // 기업명도 직무도 못 찾았으면 읽은 것으로 보지 않는다
   if (!draft || (!draft.posting.company && !draft.posting.jobTitle)) return { status: "unreadable", message: UNREADABLE };
   const body = readBody(page.html, job, page.finalUrl);
